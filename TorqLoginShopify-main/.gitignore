@@ -1,0 +1,11 @@
+.next/
+node_modules/
+.env
+.env.*
+!.env.example
+netlify/*
+!netlify/functions/
+netlify/functions/*
+!netlify/functions/*.mts
+coverage/
+npm-debug.log*
