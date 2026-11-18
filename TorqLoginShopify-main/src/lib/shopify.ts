@@ -33,6 +33,18 @@ const UPDATE_TAGS_MUTATION = `mutation UpdateCustomerStatusTags(
     userErrors { field message }
   }
 }`;
+const UPSERT_CUSTOMER_QUERY_MUTATION = `mutation UpsertCustomerQuery(
+  $handle: MetaobjectHandleInput!,
+  $values: JSON!
+) {
+  metaobjectUpsert(handle: $handle, values: $values) {
+    metaobject { id handle }
+    userErrors { field message }
+  }
+}`;
+const CURRENT_APP_SCOPES_QUERY = `query CurrentAppScopes {
+  currentAppInstallation { accessScopes { handle } }
+}`;
 const FIND_CUSTOMERS_QUERY = `query FindCustomersByPhone($query: String!) {
   customers(first: 50, query: $query) {
     nodes { id phone }
@@ -699,6 +711,51 @@ export async function ensureShopifyCustomer(
     throw new Error("Shopify did not return the created customer ID.");
   }
   return created.customerCreate.customer.id;
+}
+
+export async function createShopifyCustomerQuery(input: {
+  name: string;
+  phone: string;
+  message: string;
+  submissionId: string;
+  submittedAt: Date;
+}): Promise<string> {
+  const handle = `customer-query-${input.submissionId.replaceAll("-", "")}`;
+  const created = await graphQL<{
+    metaobjectUpsert: {
+      metaobject: { id: string; handle: string } | null;
+      userErrors: UserError[];
+    };
+  }>(UPSERT_CUSTOMER_QUERY_MUTATION, {
+    handle: { type: "customer_query", handle },
+    values: {
+      name: input.name,
+      phone: input.phone,
+      message: input.message,
+      submitted_at: input.submittedAt.toISOString(),
+      query_status: "New",
+    },
+  });
+  throwUserErrors(created.metaobjectUpsert.userErrors);
+  if (!created.metaobjectUpsert.metaobject?.id) {
+    throw new Error("Shopify did not confirm the customer inquiry.");
+  }
+  return created.metaobjectUpsert.metaobject.id;
+}
+
+export async function hasShopifyMetaobjectWriteScope(): Promise<boolean> {
+  const checkScope = async () => {
+    const result = await graphQL<{
+      currentAppInstallation: { accessScopes: Array<{ handle: string }> };
+    }>(CURRENT_APP_SCOPES_QUERY, {});
+    return result.currentAppInstallation.accessScopes.some(({ handle }) => handle === "write_metaobjects");
+  };
+  if (await checkScope()) return true;
+
+  const credentials = getShopifyCredentials();
+  const currentToken = await getAccessToken(credentials);
+  await invalidateAccessToken(credentials, currentToken);
+  return checkScope();
 }
 
 export async function writeShopifyMetafields(

@@ -30,7 +30,7 @@ export default function ContactPage() {
             <section className="contact-footer-details">
               <h2>Get in touch</h2>
               <p>Phone: <a href="tel:+923224824413">+92 322 4824413</a></p>
-              <p>Email: <a href="mailto:Ahmad.Ajam18@hotmail.com">Ahmad.Ajam18@hotmail.com</a></p>
+              <p>Email: Ahmad.Ajam18@hotmail.com</p>
               <p>Address: 33-B, Street 1, Phase 5, DHA, Lahore, Pakistan.</p>
             </section>
 

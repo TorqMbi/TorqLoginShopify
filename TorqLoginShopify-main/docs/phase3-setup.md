@@ -5,9 +5,12 @@
 - Node.js 20.11 or newer.
 - MongoDB Atlas or another MongoDB replica set; customer status, its immutable audit event, and its Shopify outbox job are committed in one transaction.
 - A Shopify Admin API custom app for the store with customer read/write access, including customer metafields and tags.
+- The Shopify app also needs the `write_metaobjects` scope for contact inquiries.
+- Keep the existing `customer_query` metaobject definition; do not recreate it or enable public access. Its Storefront access must remain **None**.
+- Its required fields must be `name` and `phone` (single-line text), `message` (multi-line text), `submitted_at` (`date_time`), and `query_status` (single-line text allowing `New`, `Contacted`, and `Resolved`).
 - A Netlify site with scheduled functions enabled.
 
-The Shopify Admin GraphQL API version is pinned in `src/lib/shopify.ts`. Configure `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, and `SHOPIFY_CLIENT_SECRET` as server-side environment variables only; never prefix them with `NEXT_PUBLIC_`. The server obtains Admin API tokens with Shopify's client credentials grant and stores them encrypted in the shared MongoDB database, refreshing before expiry. No scheduled token refresh is required.
+The Shopify Admin GraphQL API version is pinned in `src/lib/shopify.ts`. Set `APP_URL` to `https://torq-login-shopify.vercel.app/`. Configure `SHOPIFY_STORE_DOMAIN`, `SHOPIFY_CLIENT_ID`, and `SHOPIFY_CLIENT_SECRET` as server-side environment variables only; never prefix them with `NEXT_PUBLIC_`. The server obtains Admin API tokens with Shopify's client credentials grant and stores them encrypted in the shared MongoDB database, refreshing before expiry. No scheduled token refresh is required.
 
 ## Local environment and data migration
 

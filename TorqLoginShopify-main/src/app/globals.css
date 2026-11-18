@@ -1935,7 +1935,11 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   cursor: pointer;
 }
 .contact-form button:hover { background: #1ba65f; }
-.contact-form > p { margin: 0; color: #929ba4; font-size: 11px; }
+.contact-form button:disabled { cursor: wait; opacity: .7; }
+.contact-form-status { margin: 0; font-size: 13px; }
+.contact-form-status-success { color: #42d37f; }
+.contact-form-status-error { color: #ffaaa5; }
+.contact-form-trap { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; }
 .contact-footer { margin-top: auto; color: #e3e7ea; background: #1b2026; }
 .contact-footer-main { width: min(100% - 32px, 1040px); margin: 0 auto; padding: 34px 0 28px; display: grid; grid-template-columns: 1.2fr 1fr .9fr; gap: 28px; }
 .contact-footer-brand-title { display: flex; align-items: center; gap: 12px; }

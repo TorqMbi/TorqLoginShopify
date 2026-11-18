@@ -123,6 +123,23 @@ export type ShopifyOrderDocument = {
   updatedAt: Date;
 };
 
+export type ContactSubmissionKeyDocument = {
+  _id: string;
+  state: "processing" | "saved";
+  leaseId: string;
+  leaseUntil: Date;
+  payloadHash: string;
+  submittedAt: Date;
+  createdAt: Date;
+  expiresAt: Date;
+};
+
+export type ContactRateLimitDocument = {
+  _id: string;
+  count: number;
+  expiresAt: Date;
+};
+
 type MongoGlobals = typeof globalThis & {
   torqMongoClient?: MongoClient;
   torqMongoDatabase?: Promise<Db>;
@@ -188,6 +205,12 @@ export async function getDatabase(): Promise<Db> {
       database.collection<ShopifyOrderDocument>("shopify_orders").createIndexes([
         { key: { customerId: 1, checkoutKey: 1 }, unique: true },
         { key: { shopifyOrderId: 1 }, unique: true, sparse: true },
+      ]),
+      database.collection<ContactSubmissionKeyDocument>("contact_submission_keys").createIndexes([
+        { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+      ]),
+      database.collection<ContactRateLimitDocument>("contact_rate_limits").createIndexes([
+        { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
       ]),
     ]);
     return database;

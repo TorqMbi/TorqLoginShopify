@@ -1,6 +1,7 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   completeShopifyPortalDraftOrder,
+  createShopifyCustomerQuery,
   createShopifyPortalDraftOrder,
   ensureShopifyCustomer,
   findShopifyPortalCheckout,
@@ -8,6 +9,7 @@ import {
   getShopifyCheckoutVariants,
   writeShopifyMetafields,
   writeShopifyStatusTags,
+  hasShopifyMetaobjectWriteScope,
 } from "./shopify";
 
 const mocks = vi.hoisted(() => ({ getDatabase: vi.fn() }));
@@ -127,6 +129,103 @@ describe("Shopify Admin GraphQL mirror", () => {
       firstName: "Contact Person",
       tags: ["pending-verification"],
     });
+  });
+
+  it("creates one private customer query metaobject with server-owned fields", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        metaobjectUpsert: {
+          metaobject: { id: "gid://shopify/Metaobject/15", handle: "customer-query-9a7ba6f68a3c4c0d9f7d2bd11f2a9fa1" },
+          userErrors: [],
+        },
+      }));
+    const submittedAt = new Date("2026-11-18T09:00:00.000Z");
+
+    await expect(createShopifyCustomerQuery({
+      name: "Jane Doe",
+      phone: "+923001234567",
+      message: "Please call me about your products.",
+      submissionId: "9a7ba6f6-8a3c-4c0d-9f7d-2bd11f2a9fa1",
+      submittedAt,
+    })).resolves.toBe("gid://shopify/Metaobject/15");
+
+    const mutation = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(mutation.query).toContain("metaobjectUpsert");
+    expect(mutation.variables).toEqual({
+      handle: {
+        type: "customer_query",
+        handle: "customer-query-9a7ba6f68a3c4c0d9f7d2bd11f2a9fa1",
+      },
+      values: {
+        name: "Jane Doe",
+        phone: "+923001234567",
+        message: "Please call me about your products.",
+        submitted_at: "2026-11-18T09:00:00.000Z",
+        query_status: "New",
+      },
+    });
+    expect(mutation.query).not.toContain("metaobjectByHandle");
+  });
+
+  it("verifies the installed app has write_metaobjects through the existing auth flow", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        currentAppInstallation: { accessScopes: [{ handle: "write_metaobjects" }] },
+      }));
+
+    await expect(hasShopifyMetaobjectWriteScope()).resolves.toBe(true);
+    const requestBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(requestBody.query).toContain("currentAppInstallation");
+    expect(requestBody.query).toContain("accessScopes");
+  });
+
+  it("reports when the installed app lacks write_metaobjects", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        currentAppInstallation: { accessScopes: [{ handle: "read_products" }] },
+      }))
+      .mockResolvedValueOnce(oauthResponse("reacquired-test-token"))
+      .mockResolvedValueOnce(graphQLResponse({
+        currentAppInstallation: { accessScopes: [{ handle: "read_products" }] },
+      }));
+
+    await expect(hasShopifyMetaobjectWriteScope()).resolves.toBe(false);
+    expect(fetch).toHaveBeenCalledTimes(4);
+  });
+
+  it("retries a query through its stable handle and original submission time", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        metaobjectUpsert: {
+          metaobject: { id: "gid://shopify/Metaobject/15", handle: "customer-query-9a7ba6f68a3c4c0d9f7d2bd11f2a9fa1" },
+          userErrors: [],
+        },
+      }))
+      .mockResolvedValueOnce(graphQLResponse({
+        metaobjectUpsert: {
+          metaobject: { id: "gid://shopify/Metaobject/15", handle: "customer-query-9a7ba6f68a3c4c0d9f7d2bd11f2a9fa1" },
+          userErrors: [],
+        },
+      }));
+    const inquiry = {
+      name: "Jane Doe",
+      phone: "+923001234567",
+      message: "Please call me about your products.",
+      submissionId: "9a7ba6f6-8a3c-4c0d-9f7d-2bd11f2a9fa1",
+      submittedAt: new Date("2026-11-18T09:00:00.000Z"),
+    };
+
+    await expect(createShopifyCustomerQuery(inquiry)).resolves.toBe("gid://shopify/Metaobject/15");
+    await expect(createShopifyCustomerQuery(inquiry)).resolves.toBe("gid://shopify/Metaobject/15");
+    const attempts = vi.mocked(fetch).mock.calls.slice(1).map(([, options]) =>
+      JSON.parse(String(options?.body)),
+    );
+    expect(attempts).toHaveLength(2);
+    expect(attempts[0].variables).toEqual(attempts[1].variables);
   });
 
   it("writes the requested metafield names and multiline types", async () => {
