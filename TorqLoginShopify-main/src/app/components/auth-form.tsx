@@ -136,9 +136,9 @@ export function AuthForm({ mode }: Props) {
             name="mobileNumber"
             type="tel"
             autoComplete="tel"
-            inputMode="tel"
+            inputMode="numeric"
             required
-            placeholder="03001234567"
+            placeholder="+92 300 1234567"
             aria-invalid={Boolean(fieldErrors.mobileNumber)}
             aria-describedby={fieldErrors.mobileNumber ? "loginIdentifier-error" : undefined}
             onChange={() => setFieldErrors((current) => ({ ...current, mobileNumber: "" }))}
