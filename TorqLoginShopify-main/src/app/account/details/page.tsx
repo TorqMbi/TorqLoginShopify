@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AccountDetailsForm } from "@/app/components/account-details-form";
 import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
 import { getSession } from "@/lib/auth";
+import { listPricedCityNames } from "@/lib/city-pricing";
 import { getDatabase, type CustomerDocument } from "@/lib/db";
 
 export default async function AccountDetailsPage() {
@@ -22,6 +23,7 @@ export default async function AccountDetailsPage() {
   );
   if (!customer) redirect("/signup");
   const details = customer.shop_details;
+  const pricedCities = await listPricedCityNames(database);
 
   return (
     <>
@@ -39,6 +41,8 @@ export default async function AccountDetailsPage() {
           </header>
           <AccountDetailsForm
             completed={Boolean(details?.completedAt)}
+            pricedCities={pricedCities}
+            cityLocked={pricedCities.length > 0 && details?.status === "approved"}
             initialValues={{
               contactPersonName: details?.contactPersonName ?? "",
               shopName: details?.shopName ?? "",

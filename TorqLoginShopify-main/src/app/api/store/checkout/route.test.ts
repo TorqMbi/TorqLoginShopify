@@ -13,6 +13,7 @@ const mocks = vi.hoisted(() => ({
   completeShopifyPortalDraftOrder: vi.fn(),
   findShopifyPortalCheckout: vi.fn(),
   getShopifyPortalDraftOrder: vi.fn(),
+  findCityPrice: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -123,7 +124,9 @@ describe("approved customer Shopify checkout", () => {
     mocks.getDatabase.mockResolvedValue({
       collection: (name: string) => name === "customers"
         ? { findOne: mocks.getCustomer }
-        : orderCollection,
+        : name === "city_prices"
+          ? { findOne: mocks.findCityPrice }
+          : orderCollection,
     });
     mocks.getShopifyCheckoutVariants.mockResolvedValue({
       currencyCode: "PKR",
@@ -138,6 +141,46 @@ describe("approved customer Shopify checkout", () => {
     });
     mocks.findShopifyPortalCheckout.mockResolvedValue(null);
     mocks.getShopifyPortalDraftOrder.mockResolvedValue(null);
+    mocks.findCityPrice.mockResolvedValue(null);
+  });
+
+  it("charges the shop's city price and sends it to Shopify", async () => {
+    mocks.findCityPrice.mockImplementation(async (filter: Record<string, unknown>) =>
+      filter.nameKey === "lahore"
+        ? { name: "Lahore", adjustmentPercent: 10, overrides: [] }
+        : null,
+    );
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 2 }],
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.findCityPrice).toHaveBeenCalledWith({ nameKey: "lahore" });
+    expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
+      priceCity: "Lahore",
+    }), expect.anything());
+    expect([...orders.values()][0].items).toEqual([
+      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 40920 }),
+    ]);
+  });
+
+  it("uses an exact city product price ahead of the city adjustment", async () => {
+    mocks.findCityPrice.mockResolvedValue({
+      name: "Lahore",
+      adjustmentPercent: 10,
+      overrides: [{ variantId: productVariant.variantId, price: 35000 }],
+    });
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 1 }],
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
+      items: [{ variantId: productVariant.variantId, quantity: 1, unitPrice: 35000 }],
+    }), expect.anything());
   });
 
   it("uses only server-validated variants and saves the real Shopify order", async () => {
@@ -164,6 +207,7 @@ describe("approved customer Shopify checkout", () => {
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 2 }],
     }), expect.objectContaining({ deadlineAt: expect.any(Number) }));
+    expect(mocks.createShopifyPortalDraftOrder.mock.calls[0][0]).not.toHaveProperty("priceCity");
     expect(orderCollection.insertOne).toHaveBeenCalledOnce();
     const savedOrder = [...orders.values()][0];
     expect(savedOrder).toMatchObject({

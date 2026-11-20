@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { applyCityPricing, getCustomerCityPricing } from "@/lib/city-pricing";
 import { getActiveShopifyProducts } from "@/lib/shopify";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getStoreAccess } from "@/lib/store-access";
@@ -16,8 +17,14 @@ export async function GET() {
   }
 
   try {
-    const products = await getActiveShopifyProducts();
-    return NextResponse.json({ products }, { headers: { "Cache-Control": "private, no-store" } });
+    const [products, cityPricing] = await Promise.all([
+      getActiveShopifyProducts(),
+      getCustomerCityPricing(access.customerId),
+    ]);
+    return NextResponse.json(
+      { products: applyCityPricing(products, cityPricing) },
+      { headers: { "Cache-Control": "private, no-store" } },
+    );
   } catch {
     console.error("Approved store product request failed.");
     return NextResponse.json({ error: "Products are temporarily unavailable." }, { status: 502 });
