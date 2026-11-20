@@ -2,6 +2,7 @@ import Link from "next/link";
 import { AuthBackLink } from "@/app/components/auth-back-link";
 import { AuthForm } from "@/app/components/auth-form";
 import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { isOtpResetEnabled } from "@/lib/otp-delivery";
 
 export default async function LoginPage({
   searchParams,
@@ -25,7 +26,7 @@ export default async function LoginPage({
                 Account created. Your account is pending approval.
               </div>
             )}
-            <AuthForm mode="login" />
+            <AuthForm mode="login" forgotPasswordHref={isOtpResetEnabled() ? "/forgot-password" : undefined} />
             <p className="signup-login-prompt">
               New customer? <Link href="/signup">Create account</Link>
             </p>

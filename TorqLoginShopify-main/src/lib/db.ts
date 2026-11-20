@@ -140,6 +140,21 @@ export type ContactRateLimitDocument = {
   expiresAt: Date;
 };
 
+export type PasswordResetCodeDocument = {
+  customerId: ObjectId;
+  codeHash: string;
+  salt: string;
+  attempts: number;
+  expiresAt: Date;
+  createdAt: Date;
+};
+
+export type AuthRateLimitDocument = {
+  _id: string;
+  count: number;
+  expiresAt: Date;
+};
+
 type MongoGlobals = typeof globalThis & {
   torqMongoClient?: MongoClient;
   torqMongoDatabase?: Promise<Db>;
@@ -210,6 +225,13 @@ export async function getDatabase(): Promise<Db> {
         { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
       ]),
       database.collection<ContactRateLimitDocument>("contact_rate_limits").createIndexes([
+        { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+      ]),
+      database.collection<PasswordResetCodeDocument>("password_reset_codes").createIndexes([
+        { key: { customerId: 1 }, unique: true },
+        { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+      ]),
+      database.collection<AuthRateLimitDocument>("auth_rate_limits").createIndexes([
         { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
       ]),
     ]);
