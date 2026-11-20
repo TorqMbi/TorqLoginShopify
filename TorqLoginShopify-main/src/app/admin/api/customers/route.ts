@@ -33,14 +33,7 @@ export async function GET(request: Request) {
   try {
     const database = await getDatabase();
     const escapedQuery = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const phoneDigits = query.replace(/\D/g, "");
-    const normalizedMobile =
-      normalizeMobile(query) ??
-      (phoneDigits.length === 11 && phoneDigits.startsWith("0")
-        ? normalizeMobile(`+92${phoneDigits.slice(1)}`)
-        : phoneDigits.length === 10 && phoneDigits.startsWith("3")
-          ? normalizeMobile(`+92${phoneDigits}`)
-          : null);
+    const normalizedMobile = normalizeMobile(query);
     const searchMatches: Filter<CustomerDocument>[] = [
       { "shop_details.shopName": { $regex: escapedQuery, $options: "i" } },
       { "shop_details.contactPersonName": { $regex: escapedQuery, $options: "i" } },
