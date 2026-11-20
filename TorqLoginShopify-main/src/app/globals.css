@@ -1046,6 +1046,19 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   text-decoration: none;
 }
 .login-forgot-link:hover { text-decoration: underline; }
+.otp-reset-actions { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 8px 16px; }
+.otp-reset-help { margin: 0; color: #9ca3af; font-size: 13px; line-height: 1.5; }
+.otp-text-button {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: #22c55e;
+  font-size: 13px;
+  font-weight: 700;
+  cursor: pointer;
+}
+.otp-text-button:hover:not(:disabled) { text-decoration: underline; }
+.otp-text-button:disabled { color: #9ca3af; cursor: default; }
 .signup-terms-field { display: grid; gap: 6px; }
 .signup-terms-label {
   display: flex;
