@@ -9,3 +9,4 @@ netlify/functions/*
 !netlify/functions/*.mts
 coverage/
 npm-debug.log*
+*.tsbuildinfo
