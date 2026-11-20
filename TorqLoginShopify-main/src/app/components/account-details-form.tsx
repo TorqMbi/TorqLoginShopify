@@ -15,13 +15,26 @@ type Values = {
   comments: string;
 };
 
+const OTHER_CITY = "__other";
+
+function initialCityChoice(city: string, pricedCities: string[]): string {
+  const key = city.trim().replace(/\s+/g, " ").toLowerCase();
+  if (!key) return "";
+  return pricedCities.find((name) => name.toLowerCase() === key) ?? OTHER_CITY;
+}
+
 export function AccountDetailsForm({
   initialValues,
   completed,
+  pricedCities = [],
+  cityLocked = false,
 }: {
   initialValues: Values;
   completed: boolean;
+  pricedCities?: string[];
+  cityLocked?: boolean;
 }) {
+  const [cityChoice, setCityChoice] = useState(() => initialCityChoice(initialValues.city, pricedCities));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -31,6 +44,8 @@ export function AccountDetailsForm({
     setError("");
     const formData = new FormData(event.currentTarget);
     const data = Object.fromEntries(formData.entries());
+    if (data.city === OTHER_CITY) data.city = data.cityOther ?? "";
+    delete data.cityOther;
     const nextFieldErrors: Record<string, string> = {};
     for (const [field, label] of [
       ["contactPersonName", "Contact person name"],
@@ -124,7 +139,28 @@ export function AccountDetailsForm({
       </div>
       <div className="field">
         <label htmlFor="city">City <span className="details-required">*</span></label>
-        <input id="city" name="city" maxLength={2000} required defaultValue={initialValues.city} placeholder="Lahore" aria-invalid={Boolean(fieldErrors.city)} aria-describedby={fieldErrors.city ? "city-error" : undefined} onChange={() => clearFieldError("city")} />
+        {pricedCities.length === 0 ? (
+          <input id="city" name="city" maxLength={2000} required defaultValue={initialValues.city} placeholder="Lahore" aria-invalid={Boolean(fieldErrors.city)} aria-describedby={fieldErrors.city ? "city-error" : undefined} onChange={() => clearFieldError("city")} />
+        ) : cityLocked ? (
+          <>
+            <input id="city" name="city" readOnly value={initialValues.city} aria-describedby="city-hint" />
+            <span className="field-hint" id="city-hint">Your prices are based on this city. To change it, contact us on WhatsApp.</span>
+          </>
+        ) : (
+          <>
+            <div className="province-select-wrap">
+              <select id="city" name="city" required value={cityChoice} aria-invalid={Boolean(fieldErrors.city)} aria-describedby={fieldErrors.city ? "city-error" : "city-hint"} onChange={(event) => { setCityChoice(event.target.value); clearFieldError("city"); }}>
+                <option value="" disabled>Select city</option>
+                {pricedCities.map((name) => <option key={name} value={name}>{name}</option>)}
+                <option value={OTHER_CITY}>Other city</option>
+              </select>
+            </div>
+            {cityChoice === OTHER_CITY && (
+              <input id="cityOther" name="cityOther" maxLength={2000} required defaultValue={initialCityChoice(initialValues.city, pricedCities) === OTHER_CITY ? initialValues.city : ""} placeholder="Type your city" aria-label="Your city" aria-invalid={Boolean(fieldErrors.city)} onChange={() => clearFieldError("city")} />
+            )}
+            <span className="field-hint" id="city-hint">Prices are shown for your city.</span>
+          </>
+        )}
         {fieldErrors.city && <span className="field-error" id="city-error">{fieldErrors.city}</span>}
       </div>
       <div className="field">

@@ -478,6 +478,58 @@ describe("Shopify Admin GraphQL mirror", () => {
       }],
     });
     expect(JSON.stringify(requestBody.variables)).not.toContain("unitPrice");
+    expect(JSON.stringify(requestBody.variables)).not.toContain("priceOverride");
+  });
+
+  it("sends city prices as line price overrides and tags the order with the city", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        draftOrderCreate: {
+          draftOrder: { id: "gid://shopify/DraftOrder/91" },
+          userErrors: [],
+        },
+      }));
+
+    await createShopifyPortalDraftOrder({
+      customerId: "gid://shopify/Customer/42",
+      checkoutKey: "11111111-1111-4111-8111-111111111111",
+      address: {
+        contactPersonName: "Jane Doe",
+        shopName: "Bearing House",
+        phone: "+923001234567",
+        shopAddress: "Shop 4",
+        detailedAddress: "Market Road",
+        city: "Karachi",
+        province: "Sindh",
+      },
+      items: [
+        { variantId: "gid://shopify/ProductVariant/42", quantity: 3, unitPrice: 40920 },
+        { variantId: "gid://shopify/ProductVariant/43", quantity: 1, unitPrice: 999.5 },
+      ],
+      priceCity: "Karachi",
+    });
+
+    const requestBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    expect(requestBody.variables.input).toMatchObject({
+      lineItems: [
+        {
+          variantId: "gid://shopify/ProductVariant/42",
+          quantity: 3,
+          priceOverride: { amount: "40920.00", currencyCode: "PKR" },
+        },
+        {
+          variantId: "gid://shopify/ProductVariant/43",
+          quantity: 1,
+          priceOverride: { amount: "999.50", currencyCode: "PKR" },
+        },
+      ],
+      tags: ["torq-portal", "city:Karachi"],
+      customAttributes: [
+        { key: "torq_checkout_key", value: "11111111-1111-4111-8111-111111111111" },
+        { key: "torq_price_city", value: "Karachi" },
+      ],
+    });
   });
 
   it("completes a draft order with payment pending and returns the Shopify total", async () => {

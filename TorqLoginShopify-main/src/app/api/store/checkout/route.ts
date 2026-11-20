@@ -2,6 +2,7 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ObjectId, type Collection } from "mongodb";
 import { getSession } from "@/lib/auth";
+import { cityUnitPrice, findCityPricing, type CityPricing } from "@/lib/city-pricing";
 import {
   getDatabase,
   isDatabaseConfigured,
@@ -146,6 +147,7 @@ async function saveCompletedOrder(
 function buildLineItems(
   items: CheckoutLine[],
   variants: ShopifyCheckoutVariant[],
+  cityPricing: CityPricing | null,
 ): ShopifyOrderLineItem[] {
   const byId = new Map(variants.map((variant) => [variant.variantId, variant]));
   return items.map(({ variantId, quantity }) => {
@@ -167,7 +169,7 @@ function buildLineItems(
       quantity,
       title: variant.title,
       sku: variant.sku,
-      unitPrice: variant.unitPrice,
+      unitPrice: cityUnitPrice(variant.unitPrice, variantId, cityPricing),
     };
   });
 }
@@ -302,6 +304,7 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Complete your shop details before placing an order." }, { status: 409 });
     }
+    const cityPricing = await findCityPricing(database, details.city);
 
     const orderCollection = database.collection<ShopifyOrderDocument>("shopify_orders");
     const shopifyOptions: ShopifyRequestOptions = {
@@ -329,7 +332,7 @@ export async function POST(request: Request) {
     if (currencyCode !== "PKR") {
       return NextResponse.json({ error: "Orders are temporarily unavailable because the store currency is not PKR." }, { status: 503 });
     }
-    const lineItems = buildLineItems(checkout.items, variants);
+    const lineItems = buildLineItems(checkout.items, variants, cityPricing);
     const totalCartons = lineItems.reduce((sum, item) => sum + item.quantity, 0);
     let claimed;
     try {
@@ -411,7 +414,13 @@ export async function POST(request: Request) {
             city: details.city,
             province: details.province,
           },
-          items: checkout.items,
+          // City-priced orders carry each line's price; others use the Shopify price.
+          ...(cityPricing
+            ? {
+              items: lineItems.map(({ variantId, quantity, unitPrice }) => ({ variantId, quantity, unitPrice })),
+              priceCity: cityPricing.name,
+            }
+            : { items: checkout.items }),
         }, shopifyOptions);
         await orderCollection.updateOne(
           { _id: intent._id, leaseId },

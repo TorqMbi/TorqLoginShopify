@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { authorizeStaff } from "@/lib/admin-api";
+import { findCityPricing } from "@/lib/city-pricing";
 import {
   getDatabase,
   isDatabaseConfigured,
@@ -30,7 +31,7 @@ export async function GET(_request: Request, context: RouteContext) {
     });
     if (!customer) return NextResponse.json({ error: "Customer was not found." }, { status: 404 });
 
-    const [syncJob, history] = await Promise.all([
+    const [syncJob, history, cityPricing] = await Promise.all([
       database.collection<ShopifySyncJobDocument>("shopify_sync_jobs").findOne({
         _id: customer._id,
       }),
@@ -39,6 +40,7 @@ export async function GET(_request: Request, context: RouteContext) {
         .sort({ createdAt: -1 })
         .limit(100)
         .toArray(),
+      findCityPricing(database, customer.shop_details.city),
     ]);
 
     return NextResponse.json({
@@ -59,6 +61,13 @@ export async function GET(_request: Request, context: RouteContext) {
           comments: customer.shop_details.comments ?? "",
           submittedAt: customer.shop_details.completedAt ?? null,
         },
+        pricing: cityPricing
+          ? {
+            city: cityPricing.name,
+            adjustmentPercent: cityPricing.adjustmentPercent,
+            productPrices: cityPricing.overrides.size,
+          }
+          : null,
         shopifySync: {
           state: syncJob?.status === "synced"
             ? "synced"

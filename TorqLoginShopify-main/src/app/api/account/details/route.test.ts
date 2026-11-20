@@ -11,7 +11,9 @@ const mocks = vi.hoisted(() => {
   const getDatabase = vi.fn();
   const enqueueShopifySync = vi.fn();
   const syncCustomerShopifyNow = vi.fn();
+  const resolveDetailsCity = vi.fn();
   return {
+    resolveDetailsCity,
     session,
     updateOne,
     findOne,
@@ -39,7 +41,25 @@ vi.mock("@/lib/shopify-outbox", () => ({
   syncCustomerShopifyNow: mocks.syncCustomerShopifyNow,
 }));
 
+vi.mock("@/lib/city-pricing", () => ({ resolveDetailsCity: mocks.resolveDetailsCity }));
+
 import { PATCH } from "./route";
+
+function detailsRequest(city: string) {
+  return new Request("https://torq.example/api/account/details", {
+    method: "PATCH",
+    headers: { "content-type": "application/json", origin: "https://torq.example" },
+    body: JSON.stringify({
+      contactPersonName: "Contact Person",
+      shopName: "Torq Shop",
+      contactMobileNumber: "+923001234567",
+      shopAddress: "Main Road",
+      detailedAddress: "Market",
+      city,
+      province: "Sindh",
+    }),
+  });
+}
 
 describe("customer shop details updates", () => {
   beforeEach(() => {
@@ -52,6 +72,7 @@ describe("customer shop details updates", () => {
       state: "pending",
       lastError: "",
     });
+    mocks.resolveDetailsCity.mockReset().mockImplementation(async (_database, _customerId, city: string) => ({ city }));
     mocks.collection.mockImplementation(() => ({ updateOne: mocks.updateOne, findOne: mocks.findOne }));
     mocks.getDatabase.mockResolvedValue({
       client: { startSession: () => mocks.session },
@@ -87,5 +108,25 @@ describe("customer shop details updates", () => {
     expect(pipeline[0].$set).not.toHaveProperty("shop_details.status");
     expect(mocks.enqueueShopifySync).toHaveBeenCalledOnce();
     expect(mocks.syncCustomerShopifyNow).toHaveBeenCalledOnce();
+  });
+
+  it("saves a priced city under its price-list spelling", async () => {
+    mocks.resolveDetailsCity.mockResolvedValue({ city: "Karachi" });
+    const response = await PATCH(detailsRequest("  karachi "));
+
+    expect(response.status).toBe(200);
+    expect(mocks.resolveDetailsCity.mock.calls[0][2]).toBe("karachi");
+    const pipeline = mocks.updateOne.mock.calls[0][1] as Array<{ $set: Record<string, unknown> }>;
+    expect(pipeline[0].$set["shop_details.city"]).toBe("Karachi");
+  });
+
+  it("refuses a city change that would move an approved shop to another price list", async () => {
+    mocks.resolveDetailsCity.mockResolvedValue({ error: "Your prices depend on your city." });
+    const response = await PATCH(detailsRequest("Multan"));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({ error: "Your prices depend on your city." });
+    expect(mocks.updateOne).not.toHaveBeenCalled();
+    expect(mocks.enqueueShopifySync).not.toHaveBeenCalled();
   });
 });

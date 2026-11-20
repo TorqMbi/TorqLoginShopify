@@ -22,6 +22,7 @@ type CustomerData = {
     comments: string;
     submittedAt: string | null;
   };
+  pricing?: { city: string; adjustmentPercent: number; productPrices: number } | null;
   shopifySync: {
     state: ShopifySyncState;
     lastError: string;
@@ -43,6 +44,13 @@ function syncLabel(state: ShopifySyncState): string {
   if (state === "synced") return "Synced";
   if (state === "failed") return "Sync Failed";
   return "Pending Sync";
+}
+
+function pricingLabel(pricing: CustomerData["pricing"]): string {
+  if (!pricing) return "Standard Shopify prices (city has no price list)";
+  const sign = pricing.adjustmentPercent > 0 ? "+" : "";
+  const exact = pricing.productPrices === 1 ? "1 exact product price" : `${pricing.productPrices} exact product prices`;
+  return `${pricing.city} price list (${sign}${pricing.adjustmentPercent}%, ${exact})`;
 }
 
 export function CustomerReview({ customerId }: { customerId: string }) {
@@ -147,6 +155,7 @@ export function CustomerReview({ customerId }: { customerId: string }) {
           <div><dt>Shop address</dt><dd>{detail.shopAddress || "—"}</dd></div>
           <div><dt>Detailed address</dt><dd>{detail.detailedAddress || "—"}</dd></div>
           <div><dt>City / province</dt><dd>{detail.city || "—"}, {detail.province || "—"}</dd></div>
+          <div><dt>Prices</dt><dd>{pricingLabel(customer.pricing)}</dd></div>
           <div><dt>Comments</dt><dd>{detail.comments || "—"}</dd></div>
           <div><dt>Submitted</dt><dd>{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : "Not submitted"}</dd></div>
         </dl>
