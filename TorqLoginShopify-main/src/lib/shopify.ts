@@ -1004,7 +1004,8 @@ export async function createShopifyPortalDraftOrder(input: {
   customerId: string;
   checkoutKey: string;
   address: ShopifyOrderAddress;
-  items: Array<{ variantId: string; quantity: number }>;
+  items: Array<{ variantId: string; quantity: number; unitPrice?: number }>;
+  priceCity?: string;
 }, options: ShopifyRequestOptions = {}): Promise<string> {
   const nameParts = input.address.contactPersonName.trim().split(/\s+/);
   const provinceCodes: Record<string, string> = {
@@ -1025,8 +1026,16 @@ export async function createShopifyPortalDraftOrder(input: {
     }>(CREATE_DRAFT_ORDER_MUTATION, {
       input: {
         purchasingEntity: { customerId: input.customerId },
-        lineItems: input.items.map(({ variantId, quantity }) => ({ variantId, quantity })),
-        tags: ["torq-portal"],
+        lineItems: input.items.map(({ variantId, quantity, unitPrice }) =>
+          unitPrice === undefined
+            ? { variantId, quantity }
+            : {
+              variantId,
+              quantity,
+              priceOverride: { amount: unitPrice.toFixed(2), currencyCode: "PKR" },
+            },
+        ),
+        tags: input.priceCity ? ["torq-portal", `city:${input.priceCity}`] : ["torq-portal"],
         note: `Shop: ${input.address.shopName}\nMobile: ${input.address.phone}`,
         phone: input.address.phone,
         shippingAddress: {
@@ -1040,7 +1049,10 @@ export async function createShopifyPortalDraftOrder(input: {
           countryCode: "PK",
           phone: input.address.phone,
         },
-        customAttributes: [{ key: "torq_checkout_key", value: input.checkoutKey }],
+        customAttributes: [
+          { key: "torq_checkout_key", value: input.checkoutKey },
+          ...(input.priceCity ? [{ key: "torq_price_city", value: input.priceCity }] : []),
+        ],
       },
     }, options);
     throwUserErrors(response.draftOrderCreate.userErrors);

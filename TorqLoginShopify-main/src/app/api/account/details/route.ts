@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { getSession } from "@/lib/auth";
+import { resolveDetailsCity } from "@/lib/city-pricing";
 import { getDatabase, isDatabaseConfigured, type CustomerDocument } from "@/lib/db";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
 import { normalizeMobile } from "@/lib/validation";
@@ -89,6 +90,11 @@ export async function PATCH(request: Request) {
     const database = await getDatabase();
     const now = new Date();
     const customerId = new ObjectId(session.customerId);
+    const cityChoice = await resolveDetailsCity(database, customerId, details.city);
+    if ("error" in cityChoice) {
+      return NextResponse.json({ error: cityChoice.error }, { status: 409 });
+    }
+    details.city = cityChoice.city;
     const clientSession = database.client.startSession();
     let matchedCount = 0;
     try {

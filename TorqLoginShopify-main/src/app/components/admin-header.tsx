@@ -12,6 +12,7 @@ export function AdminHeader({ staff }: { staff: StaffIdentity }) {
       </Link>
       <nav className="topbar-actions admin-header-actions" aria-label="Staff navigation">
         <Link href="/admin">Verification queue</Link>
+        {staff.role === "admin" && <Link href="/admin/pricing">City pricing</Link>}
         {staff.role === "admin" && <Link href="/admin/staff">Staff accounts</Link>}
         <span className="header-note">{staff.username} · {staff.role}</span>
         <AdminLogoutButton />

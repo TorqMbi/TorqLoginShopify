@@ -29,6 +29,18 @@ export type CustomerDocument = {
   passwordResetExpiresAt?: Date;
 };
 
+// A city's price list, set by admins in the portal. Customers whose shop city
+// matches `nameKey` see these prices; everyone else sees the Shopify price.
+export type CityPriceDocument = {
+  name: string;
+  nameKey: string;
+  adjustmentPercent: number;
+  overrides: Array<{ variantId: string; price: number }>;
+  createdAt: Date;
+  updatedAt: Date;
+  updatedBy: string;
+};
+
 export type SessionDocument = {
   tokenHash: string;
   role: "admin" | "customer";
@@ -140,6 +152,21 @@ export type ContactRateLimitDocument = {
   expiresAt: Date;
 };
 
+export type PasswordResetCodeDocument = {
+  customerId: ObjectId;
+  codeHash: string;
+  salt: string;
+  attempts: number;
+  expiresAt: Date;
+  createdAt: Date;
+};
+
+export type AuthRateLimitDocument = {
+  _id: string;
+  count: number;
+  expiresAt: Date;
+};
+
 type MongoGlobals = typeof globalThis & {
   torqMongoClient?: MongoClient;
   torqMongoDatabase?: Promise<Db>;
@@ -171,6 +198,9 @@ export async function getDatabase(): Promise<Db> {
         { key: { usernameNormalized: 1 }, unique: true },
         { key: { "shop_details.status": 1, createdAt: -1 } },
         { key: { shopifyCustomerId: 1 }, sparse: true },
+      ]),
+      database.collection<CityPriceDocument>("city_prices").createIndexes([
+        { key: { nameKey: 1 }, unique: true },
       ]),
       database.collection<SessionDocument>("auth_sessions").createIndexes([
         { key: { tokenHash: 1 }, unique: true },
@@ -210,6 +240,13 @@ export async function getDatabase(): Promise<Db> {
         { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
       ]),
       database.collection<ContactRateLimitDocument>("contact_rate_limits").createIndexes([
+        { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+      ]),
+      database.collection<PasswordResetCodeDocument>("password_reset_codes").createIndexes([
+        { key: { customerId: 1 }, unique: true },
+        { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
+      ]),
+      database.collection<AuthRateLimitDocument>("auth_rate_limits").createIndexes([
         { key: { expiresAt: 1 }, expireAfterSeconds: 0 },
       ]),
     ]);

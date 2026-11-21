@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { Storefront } from "@/app/components/storefront";
 import { getCustomerHeaderCustomer } from "@/app/components/store-chrome";
+import { applyCityPricing, getCustomerCityPricing } from "@/lib/city-pricing";
 import { getActiveShopifyProducts, type ShopifyStoreProduct } from "@/lib/shopify";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getStoreAccess } from "@/lib/store-access";
@@ -17,7 +18,11 @@ export default async function StorePage() {
 
   let products: ShopifyStoreProduct[] | null = null;
   try {
-    products = await getActiveShopifyProducts();
+    const [shopifyProducts, cityPricing] = await Promise.all([
+      getActiveShopifyProducts(),
+      getCustomerCityPricing(access.customerId),
+    ]);
+    products = applyCityPricing(shopifyProducts, cityPricing);
   } catch {
     console.error("Approved store page product request failed.");
   }
