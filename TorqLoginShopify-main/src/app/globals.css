@@ -142,6 +142,11 @@ a { color: inherit; }
 .welcome-panel { max-width: 700px; padding: 38px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
 .welcome-panel h2 { margin: 0 0 9px; color: var(--navy); font: 700 23px "Segoe UI", Arial, sans-serif; }
 .welcome-panel p { margin: 0; color: var(--muted); line-height: 1.7; }
+.account-status-panel { max-width: 660px; padding: 32px 36px; border-radius: 14px; box-shadow: 0 12px 32px rgba(0,0,0,.12); }
+.account-status-topline { display: flex; justify-content: space-between; align-items: center; gap: 16px; margin-bottom: 24px; }
+.account-status-topline .stat-label { margin: 0; }
+.account-status-panel h2 { margin-bottom: 8px; }
+.account-status-panel p { max-width: 520px; }
 .toolbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .toolbar-search { width: min(360px, 100%); }
 .toolbar select { width: 170px; min-height: 43px; padding: 0 12px; border: 1px solid #dce4eb; border-radius: 7px; background: #fff; color: var(--ink); }
@@ -205,6 +210,7 @@ tbody tr:last-child td { border-bottom: 0; }
   .reset-actions .button { flex: 1; }
   th, td { padding: 12px 10px; }
   .welcome-panel { padding: 27px 22px; }
+  .account-status-panel { padding: 25px 22px; }
 }
 
 @media (max-width: 390px) {
