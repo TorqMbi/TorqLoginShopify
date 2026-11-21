@@ -21,14 +21,18 @@ export function StoreFooter() {
         <section className="footer-brand">
           <div className="footer-brand-heading">
             <span className="footer-mark" aria-hidden="true">T</span>
-            <strong>Torque Bearings</strong>
+            <strong>TorqBearings</strong>
           </div>
-          <p>Bearings and industrial spare parts for your business.</p>
+          <p>Wholesale bearings and industrial spare parts for shops, workshops and businesses across Pakistan.</p>
           <small>Operated by Aysha Bearing Industries.</small>
         </section>
         <section className="footer-contact">
           <h2>Get in touch</h2>
-          <Link href="/contact">Contact TORQ Bearings</Link>
+          <div>
+            <a href="tel:+923224824413">+92 322 4824413</a>
+            <a href="mailto:Ahmad.Ajam18@hotmail.com">Ahmad.Ajam18@hotmail.com</a>
+            <Link href="/contact">Send a message</Link>
+          </div>
         </section>
         <section className="footer-links">
           <h2>Helpful links</h2>
@@ -42,7 +46,7 @@ export function StoreFooter() {
         </section>
       </div>
       <div className="footer-bottom">
-        <span>© {new Date().getFullYear()} torqbearingsStore</span>
+        <span>© {new Date().getFullYear()} TorqBearings</span>
         <Link href="/signup">Customer account</Link>
       </div>
     </footer>

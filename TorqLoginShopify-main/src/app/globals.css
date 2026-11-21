@@ -380,6 +380,7 @@ body {
   line-height: 1.9;
   text-decoration: none;
 }
+.footer-contact > div { display: grid; }
 .footer-links > div { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 4px 16px; }
 .footer-bottom {
   width: min(100%, 1120px);
@@ -399,42 +400,40 @@ body {
   top: 0;
   z-index: 50;
   width: 100%;
-  border-bottom: 1px solid #2e343d;
+  border-bottom: 1px solid #1f2937;
   color: #f3f4f6;
-  background: #12151a;
+  background: #111827;
 }
 .customer-site-header-inner {
-  width: min(100%, 1240px);
-  min-height: 58px;
+  width: min(100%, 1120px);
+  min-height: 52px;
   margin: 0 auto;
-  padding: 8px 20px;
+  padding: 0 20px;
   display: flex;
   align-items: center;
-  gap: 27px;
+  gap: 26px;
 }
 .customer-site-brand {
   min-width: 0;
   display: inline-flex;
   align-items: center;
-  gap: 8px;
   color: #f3f4f6;
-  font-size: 13px;
+  font-size: 14px;
   font-weight: 700;
   text-decoration: none;
   white-space: nowrap;
 }
-.customer-site-brand img { width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
 .customer-site-nav { display: flex; align-items: center; gap: 24px; }
 .customer-site-nav a {
   color: #e5e7eb;
-  font-size: 12px;
+  font-size: 13px;
   text-decoration: none;
 }
 .customer-site-nav a:hover, .customer-header-edit:hover { color: #22c55e; }
-.customer-site-actions { margin-left: auto; display: flex; align-items: center; gap: 16px; }
+.customer-site-actions { margin-left: auto; display: flex; align-items: center; gap: 14px; }
 .customer-header-edit {
   color: #22c55e;
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 600;
   text-decoration: underline;
   white-space: nowrap;
@@ -1989,7 +1988,105 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 .contact-footer-bottom { min-height: 52px; padding: 0 max(16px, calc((100% - 1040px) / 2)); display: flex; align-items: center; justify-content: space-between; gap: 12px; border-top: 1px solid #30363c; color: #aab3bb; font-size: 11px; }
 .contact-footer-bottom a { color: #aab3bb; }
 
+.policy-page {
+  min-height: calc(100vh - 220px);
+  padding: 52px 20px;
+  color: #e8edf0;
+  background: #111417;
+}
+.policy-shell {
+  width: min(100%, 1120px);
+  margin: 0 auto;
+  display: flex;
+  justify-content: center;
+}
+.policy-document {
+  max-width: 820px;
+  padding: 42px 48px 36px;
+  border: 1px solid #30363c;
+  border-radius: 12px;
+  background: #181c20;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, .18);
+}
+.policy-document header {
+  padding-bottom: 28px;
+  border-bottom: 1px solid #30363c;
+}
+.policy-document header > p {
+  margin: 0 0 8px;
+  color: #27c875;
+  font-size: 11px;
+  font-weight: 800;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.policy-document h1 {
+  margin: 0;
+  color: #f3f5f6;
+  font-size: clamp(32px, 5vw, 48px);
+  letter-spacing: -.04em;
+}
+.policy-document header > span {
+  display: block;
+  margin-top: 10px;
+  color: #929da5;
+  font-size: 11px;
+}
+.policy-document header > div {
+  margin-top: 22px;
+  color: #bdc5ca;
+  font-size: 15px;
+  line-height: 1.75;
+}
+.policy-document section {
+  padding: 26px 0 8px;
+  border-bottom: 1px solid #292f34;
+}
+.policy-document section h2,
+.policy-contact h2 {
+  margin: 0 0 12px;
+  color: #f0f3f4;
+  font-size: 17px;
+}
+.policy-document section p {
+  margin: 0 0 14px;
+  color: #b2bac0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.policy-document section ul {
+  margin: 0;
+  padding: 0 0 12px 20px;
+  color: #b2bac0;
+  font-size: 13px;
+  line-height: 1.8;
+}
+.policy-document section li { margin: 5px 0; padding-left: 4px; }
+.policy-document section li::marker { color: #27c875; }
+.policy-contact {
+  margin-top: 28px;
+  padding: 22px;
+  border: 1px solid #2e4838;
+  border-radius: 9px;
+  background: #17241d;
+}
+.policy-contact p {
+  margin: 0 0 12px;
+  color: #b3beb7;
+  font-size: 12px;
+}
+.policy-contact div { display: flex; flex-wrap: wrap; gap: 14px 20px; }
+.policy-contact a {
+  color: #45d88a;
+  font-size: 12px;
+  text-decoration: none;
+}
+
 @media (max-width: 700px) {
+  .policy-page { padding: 24px 12px 38px; }
+  .policy-document { padding: 28px 20px 24px; }
+  .policy-document h1 { font-size: 34px; }
+  .policy-document header > div { font-size: 14px; }
   .contact-page-header { min-height: 54px; padding-inline: 16px; }
   .contact-content { padding-top: 25px; padding-bottom: 42px; }
   .contact-content h1 { margin-bottom: 62px; font-size: 48px; }

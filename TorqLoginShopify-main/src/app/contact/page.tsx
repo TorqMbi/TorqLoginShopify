@@ -21,7 +21,7 @@ export default function ContactPage() {
             <section className="contact-footer-brand">
               <div className="contact-footer-brand-title">
                 <span aria-hidden="true">T</span>
-                <strong>Torque Bearings</strong>
+                <strong>TorqBearings</strong>
               </div>
               <p>Bearings and industrial spare parts for your business.</p>
               <small>Operated by Aysha Bearing Industries.</small>
@@ -46,7 +46,7 @@ export default function ContactPage() {
             </nav>
           </div>
           <div className="contact-footer-bottom">
-            <span>© {new Date().getFullYear()} torqbearingsStore</span>
+            <span>© {new Date().getFullYear()} TorqBearings</span>
             <Link href="/dashboard">Customer account</Link>
           </div>
         </footer>

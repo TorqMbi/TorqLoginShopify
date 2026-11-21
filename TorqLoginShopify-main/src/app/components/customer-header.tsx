@@ -1,6 +1,5 @@
 "use client";
 
-import Image from "next/image";
 import Link from "next/link";
 import { useEffect, useRef, useState } from "react";
 import type { CustomerHeaderCustomer } from "@/lib/customer-header";
@@ -209,8 +208,7 @@ export function CustomerHeader({
     <header className="customer-site-header">
       <div className="customer-site-header-inner">
         <Link className="customer-site-brand" href="/" aria-label="TORQ Bearings home">
-          <Image src="/torq-logo.jpg" width={30} height={30} alt="" unoptimized />
-          <span>torqbearingsStore</span>
+          <span>TorqBearings</span>
         </Link>
         <nav className="customer-site-nav" aria-label="Main navigation">
           <Link href="/">Home</Link>
