@@ -1,3 +1,4 @@
+import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ObjectId } from "mongodb";
 import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
@@ -53,6 +54,11 @@ export default async function CustomerDashboard() {
                   : "Your account needs attention"}
             </h2>
             <p>{statusMessage[status]}</p>
+            {status === "approved" && (
+              <Link className="button account-browse-button" href="/store">
+                Browse Products
+              </Link>
+            )}
           </div>
         </section>
       </main>

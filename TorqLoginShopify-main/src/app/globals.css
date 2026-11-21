@@ -147,6 +147,13 @@ a { color: inherit; }
 .account-status-topline .stat-label { margin: 0; }
 .account-status-panel h2 { margin-bottom: 8px; }
 .account-status-panel p { max-width: 520px; }
+.account-browse-button {
+  margin-top: 22px;
+  min-width: 170px;
+  background: #17623d;
+  font-size: 14px;
+}
+.account-browse-button:hover { background: #1b7b4b; }
 .toolbar { display: flex; justify-content: space-between; gap: 12px; margin-bottom: 18px; }
 .toolbar-search { width: min(360px, 100%); }
 .toolbar select { width: 170px; min-height: 43px; padding: 0 12px; border: 1px solid #dce4eb; border-radius: 7px; background: #fff; color: var(--ink); }
