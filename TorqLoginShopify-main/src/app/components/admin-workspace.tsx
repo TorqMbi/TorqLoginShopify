@@ -22,51 +22,76 @@ type GeneratedResetLink = {
 export function AdminWorkspace() {
   const [activeTab, setActiveTab] = useState<"customers" | "requests">("customers");
   const [pendingCount, setPendingCount] = useState(0);
+  const [accountCounts, setAccountCounts] = useState<Record<"pending" | "approved" | "blocked", number>>({
+    pending: 0,
+    approved: 0,
+    blocked: 0,
+  });
 
   return (
     <>
-      <div className="admin-tabs" role="tablist" aria-label="Admin dashboard sections">
-        <button
-          id="customers-tab"
-          className={activeTab === "customers" ? "admin-tab active" : "admin-tab"}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "customers"}
-          aria-controls="customers-panel"
-          onClick={() => setActiveTab("customers")}
-        >
-          Customer accounts
+      <div className="verification-summary" aria-label="Verification totals">
+        <button className="verification-summary-card pending" type="button" onClick={() => setActiveTab("customers")}>
+          <span>Pending Review</span>
+          <strong>{accountCounts.pending}</strong>
         </button>
-        <button
-          id="reset-requests-tab"
-          className={activeTab === "requests" ? "admin-tab active" : "admin-tab"}
-          type="button"
-          role="tab"
-          aria-selected={activeTab === "requests"}
-          aria-controls="reset-requests-panel"
-          onClick={() => setActiveTab("requests")}
-        >
-          Password reset requests
-          {pendingCount > 0 && <span className="notification-badge">{pendingCount}</span>}
+        <button className="verification-summary-card approved" type="button" onClick={() => setActiveTab("customers")}>
+          <span>Approved Dealers</span>
+          <strong>{accountCounts.approved}</strong>
+        </button>
+        <button className="verification-summary-card blocked" type="button" onClick={() => setActiveTab("customers")}>
+          <span>Blocked Accounts</span>
+          <strong>{accountCounts.blocked}</strong>
+        </button>
+        <button className="verification-summary-card resets" type="button" onClick={() => setActiveTab("requests")}>
+          <span>Password Resets</span>
+          <strong>{pendingCount}</strong>
         </button>
       </div>
-      <div
-        id="customers-panel"
-        className="admin-tab-panel"
-        role="tabpanel"
-        aria-labelledby="customers-tab"
-        hidden={activeTab !== "customers"}
-      >
-        <AdminDashboard />
-      </div>
-      <div
-        id="reset-requests-panel"
-        className="admin-tab-panel"
-        role="tabpanel"
-        aria-labelledby="reset-requests-tab"
-        hidden={activeTab !== "requests"}
-      >
-        <PasswordResetRequests onPendingCountChange={setPendingCount} />
+      <div className="dashboard-card verification-card">
+        <div className="admin-tabs" role="tablist" aria-label="Admin dashboard sections">
+          <button
+            id="customers-tab"
+            className={activeTab === "customers" ? "admin-tab active" : "admin-tab"}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "customers"}
+            aria-controls="customers-panel"
+            onClick={() => setActiveTab("customers")}
+          >
+            Customer accounts
+          </button>
+          <button
+            id="reset-requests-tab"
+            className={activeTab === "requests" ? "admin-tab active" : "admin-tab"}
+            type="button"
+            role="tab"
+            aria-selected={activeTab === "requests"}
+            aria-controls="reset-requests-panel"
+            onClick={() => setActiveTab("requests")}
+          >
+            Password reset requests
+            {pendingCount > 0 && <span className="notification-badge">{pendingCount}</span>}
+          </button>
+        </div>
+        <div
+          id="customers-panel"
+          className="admin-tab-panel"
+          role="tabpanel"
+          aria-labelledby="customers-tab"
+          hidden={activeTab !== "customers"}
+        >
+          <AdminDashboard onCountsChange={setAccountCounts} />
+        </div>
+        <div
+          id="reset-requests-panel"
+          className="admin-tab-panel"
+          role="tabpanel"
+          aria-labelledby="reset-requests-tab"
+          hidden={activeTab !== "requests"}
+        >
+          <PasswordResetRequests onPendingCountChange={setPendingCount} />
+        </div>
       </div>
     </>
   );

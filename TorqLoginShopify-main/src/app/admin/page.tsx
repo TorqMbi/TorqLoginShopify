@@ -9,9 +9,9 @@ export default async function AdminPage() {
   return (
     <main className="app-page">
       <AdminHeader staff={staff} />
-      <section className="content-wrap">
+      <section className="content-wrap admin-content">
         <div className="page-heading"><h1>Customer verification</h1><p>Review shop details and manage local account status.</p></div>
-        <div className="dashboard-card"><AdminWorkspace /></div>
+        <AdminWorkspace />
       </section>
     </main>
   );

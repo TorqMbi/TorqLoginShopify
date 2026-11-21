@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => {
   const enqueueShopifySync = vi.fn();
   const syncCustomerShopifyNow = vi.fn();
   const resolveDetailsCity = vi.fn();
+  const destroySession = vi.fn();
   return {
     resolveDetailsCity,
     session,
@@ -21,11 +22,13 @@ const mocks = vi.hoisted(() => {
     getDatabase,
     enqueueShopifySync,
     syncCustomerShopifyNow,
+    destroySession,
   };
 });
 
 vi.mock("@/lib/auth", () => ({
   getSession: async () => ({ role: "customer", customerId: "abcdef0123456789abcdef01" }),
+  destroySession: mocks.destroySession,
 }));
 vi.mock("@/lib/db", () => ({
   getDatabase: mocks.getDatabase,
@@ -65,6 +68,7 @@ describe("customer shop details updates", () => {
   beforeEach(() => {
     mocks.session.withTransaction.mockClear();
     mocks.session.endSession.mockClear();
+    mocks.destroySession.mockReset().mockResolvedValue(undefined);
     mocks.updateOne.mockReset().mockResolvedValue({ matchedCount: 1 });
     mocks.findOne.mockReset().mockResolvedValue({ shop_details: { syncVersion: 1 } });
     mocks.enqueueShopifySync.mockReset().mockResolvedValue(undefined);

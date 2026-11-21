@@ -82,7 +82,7 @@ export function AccountDetailsForm({
       });
       const result = await response.json();
       if (!response.ok) throw new Error(result.error ?? "Unable to save your details.");
-      window.location.assign("/dashboard");
+      window.location.assign(completed ? "/dashboard" : "/login?registered=1");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to save your details.");
     } finally {

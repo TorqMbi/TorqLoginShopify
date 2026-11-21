@@ -22,7 +22,7 @@ export default async function LoginPage({
             </header>
             {params.registered === "1" && (
               <div className="message message-success login-success-message">
-                Account created. Your account is pending approval.
+                Shop details submitted. Your account is pending approval.
               </div>
             )}
             <AuthForm mode="login" />

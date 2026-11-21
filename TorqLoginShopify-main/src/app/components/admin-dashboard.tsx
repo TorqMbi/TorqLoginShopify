@@ -22,7 +22,11 @@ type CustomerListResult = {
 
 const statuses: AccountStatus[] = ["pending", "approved", "blocked"];
 
-export function AdminDashboard() {
+export function AdminDashboard({
+  onCountsChange,
+}: {
+  onCountsChange?: (counts: Record<AccountStatus, number>) => void;
+}) {
   const [customers, setCustomers] = useState<CustomerRow[]>([]);
   const [counts, setCounts] = useState<Record<AccountStatus, number>>({
     pending: 0,
@@ -46,13 +50,14 @@ export function AdminDashboard() {
       if (!response.ok) throw new Error(result.error ?? "Unable to load customers.");
       setCustomers(result.customers);
       setCounts(result.counts);
+      onCountsChange?.(result.counts);
       setTotalPages(result.totalPages);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to load customers.");
     } finally {
       setLoading(false);
     }
-  }, [page, search, status]);
+  }, [onCountsChange, page, search, status]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => void loadCustomers(), 200);

@@ -83,7 +83,7 @@ export function AuthForm({ mode }: Props) {
         isAdmin
           ? "/admin"
           : isSignup
-            ? "/login?registered=1"
+            ? "/account/details"
             : customerRedirect,
       );
     } catch (caught) {

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import bcrypt from "bcryptjs";
 import { MongoServerError } from "mongodb";
 import { getDatabase, isDatabaseConfigured, type CustomerDocument } from "@/lib/db";
+import { createSession } from "@/lib/auth";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
 import { isValidPassword, isValidUsername, normalizeMobile } from "@/lib/validation";
 
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
   try {
     const passwordHash = await bcrypt.hash(body.password, 12);
     const database = await getDatabase();
-    await database.collection<CustomerDocument>("customers").insertOne({
+    const result = await database.collection<CustomerDocument>("customers").insertOne({
       mobileNumber,
       username,
       usernameNormalized: username.toLowerCase(),
@@ -40,7 +41,11 @@ export async function POST(request: Request) {
       createdAt: new Date(),
       sessionVersion: 0,
     });
-    return NextResponse.json({ message: "Your account has been created and is awaiting approval." }, { status: 201 });
+    await createSession("customer", result.insertedId.toString());
+    return NextResponse.json({
+      message: "Your account has been created.",
+      redirectTo: "/account/details",
+    }, { status: 201 });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {
       return NextResponse.json({ error: "That username or mobile number is already registered." }, { status: 409 });

@@ -1,6 +1,6 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
-import { getSession } from "@/lib/auth";
+import { destroySession, getSession } from "@/lib/auth";
 import { resolveDetailsCity } from "@/lib/city-pricing";
 import { getDatabase, isDatabaseConfigured, type CustomerDocument } from "@/lib/db";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
@@ -97,7 +97,13 @@ export async function PATCH(request: Request) {
     details.city = cityChoice.city;
     const clientSession = database.client.startSession();
     let matchedCount = 0;
+    let wasCompleted = false;
     try {
+      const existingCustomer = await database.collection<CustomerDocument>("customers").findOne(
+        { _id: customerId },
+        { projection: { "shop_details.completedAt": 1 }, session: clientSession },
+      );
+      wasCompleted = Boolean(existingCustomer?.shop_details.completedAt);
       await clientSession.withTransaction(async () => {
         const updated = await database.collection<CustomerDocument>("customers").updateOne(
           { _id: customerId },
@@ -143,6 +149,7 @@ export async function PATCH(request: Request) {
     if (matchedCount === 0) {
       return NextResponse.json({ error: "Customer account was not found." }, { status: 404 });
     }
+    if (!wasCompleted) await destroySession();
     let shopifySync: ShopifySyncAttemptResult = {
       state: "pending",
       lastError: "Sync is queued for a later attempt.",
