@@ -13,7 +13,7 @@ export default function SignupPage() {
           <section className="signup-card">
             <header className="signup-card-header">
               <h1>Create your TORQ account</h1>
-              <p>Sign up with your mobile number to order bearings by the carton.</p>
+              <p>Create your account and add your shop details. Required information helps our team review your account.</p>
             </header>
             <AuthForm mode="signup" />
             <p className="signup-login-prompt">

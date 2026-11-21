@@ -318,6 +318,16 @@ export type ShopifyCreatedOrder = {
 
 type CustomerDetails = NonNullable<CustomerDocument["shop_details"]>;
 
+const shopifyProvinceChoices: Record<string, string> = {
+  Punjab: "Punjab",
+  Sindh: "Sindh",
+  "Khyber Pakhtunkhwa": "KPK",
+  Balochistan: "Blochistan",
+  "Islamabad Capital Territory": "ICT",
+  "Gilgit-Baltistan": "Gilgit-Baltisitan",
+  "Azad Jammu and Kashmir": "AJK",
+};
+
 let nextCallAt = 0;
 let requestQueue: Promise<void> = Promise.resolve();
 
@@ -771,7 +781,13 @@ export async function writeShopifyMetafields(
     ["shop_address", details.shopAddress, "single_line_text_field"],
     ["detailed_address", details.detailedAddress, "multi_line_text_field"],
     ["city_name", details.city, "single_line_text_field"],
-    ["province", details.province, "single_line_text_field"],
+    [
+      "province",
+      details.province
+        ? shopifyProvinceChoices[details.province] ?? details.province
+        : undefined,
+      "single_line_text_field",
+    ],
     ["comments", details.comments, "multi_line_text_field"],
   ];
   const metafields = definitions

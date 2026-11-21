@@ -942,7 +942,7 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 }
 .auth-card-container {
   position: relative;
-  width: min(100%, 448px);
+  width: min(100%, 560px);
 }
 .auth-back-link {
   position: absolute;
@@ -959,7 +959,7 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 .auth-back-link:hover { text-decoration: underline; }
 .signup-card {
   width: 100%;
-  max-width: 448px;
+  max-width: 560px;
   padding: 24px;
   border: 1px solid #2e343d;
   border-top: 4px solid #22c55e;
@@ -976,6 +976,24 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 }
 .signup-card-header p { margin: 0; color: #9ca3af; font-size: 14px; line-height: 1.55; }
 .signup-form { gap: 16px; }
+.signup-shop-details-heading {
+  display: grid;
+  gap: 5px;
+  margin-top: 8px;
+  padding-top: 18px;
+  border-top: 1px solid #2e343d;
+}
+.signup-shop-details-heading h2 {
+  margin: 0;
+  color: #f3f4f6;
+  font: 600 17px/1.35 "Inter", system-ui, sans-serif;
+}
+.signup-shop-details-heading p {
+  margin: 0;
+  color: #9ca3af;
+  font-size: 13px;
+  line-height: 1.5;
+}
 .signup-form .field,
 .login-form .field { gap: 6px; min-width: 0; }
 .signup-form .field > label,

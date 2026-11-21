@@ -269,6 +269,34 @@ describe("Shopify Admin GraphQL mirror", () => {
     expect(fields.every(({ namespace }) => namespace === "custom")).toBe(true);
   });
 
+  it("maps canonical province names to the choices accepted by Shopify", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        metafieldsSet: { userErrors: [] },
+      }));
+
+    await writeShopifyMetafields("gid://shopify/Customer/12", {
+      status: "pending",
+      syncVersion: 1,
+      contactPersonName: "Person",
+      shopName: "Shop",
+      contactMobileNumber: "+923001234567",
+      alternateMobileNumber: "+923001234568",
+      shopAddress: "Address",
+      detailedAddress: "Street",
+      city: "Gilgit",
+      province: "Gilgit-Baltistan",
+      comments: "Note",
+    });
+
+    const mutation = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
+    const province = mutation.variables.metafields.find(
+      ({ key }: { key: string }) => key === "province",
+    );
+    expect(province.value).toBe("Gilgit-Baltisitan");
+  });
+
   it("deletes cleared optional metafields and never sends blank values", async () => {
     vi.mocked(fetch)
       .mockResolvedValueOnce(oauthResponse())

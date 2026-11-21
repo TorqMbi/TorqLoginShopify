@@ -3,6 +3,8 @@ import bcrypt from "bcryptjs";
 import { MongoServerError } from "mongodb";
 import { getDatabase, isDatabaseConfigured, type CustomerDocument } from "@/lib/db";
 import { createSession } from "@/lib/auth";
+import { findCityPricing } from "@/lib/city-pricing";
+import { parseCustomerShopDetails } from "@/lib/customer-shop-details";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
 import { isValidPassword, isValidUsername, normalizeMobile } from "@/lib/validation";
 
@@ -28,23 +30,39 @@ export async function POST(request: Request) {
   if (body.password !== body.confirmPassword) {
     return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
   }
+  if (body.terms !== "on") {
+    return NextResponse.json({ error: "You must agree to the Terms and Conditions." }, { status: 400 });
+  }
+  const parsedDetails = parseCustomerShopDetails(body);
+  if ("error" in parsedDetails) {
+    return NextResponse.json({ error: parsedDetails.error }, { status: 400 });
+  }
 
   try {
     const passwordHash = await bcrypt.hash(body.password, 12);
     const database = await getDatabase();
+    const cityPricing = await findCityPricing(database, parsedDetails.details.city);
+    const now = new Date();
     const result = await database.collection<CustomerDocument>("customers").insertOne({
       mobileNumber,
       username,
       usernameNormalized: username.toLowerCase(),
       passwordHash,
-      shop_details: { status: "pending", syncVersion: 0 },
-      createdAt: new Date(),
+      shop_details: {
+        ...parsedDetails.details,
+        city: cityPricing?.name ?? parsedDetails.details.city,
+        status: "pending",
+        completedAt: now,
+        updatedAt: now,
+        syncVersion: 0,
+      },
+      createdAt: now,
       sessionVersion: 0,
     });
     await createSession("customer", result.insertedId.toString());
     return NextResponse.json({
       message: "Your account has been created.",
-      redirectTo: "/account/details",
+      redirectTo: "/dashboard",
     }, { status: 201 });
   } catch (error) {
     if (error instanceof MongoServerError && error.code === 11000) {

@@ -2,35 +2,15 @@ import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { destroySession, getSession } from "@/lib/auth";
 import { resolveDetailsCity } from "@/lib/city-pricing";
+import { parseCustomerShopDetails } from "@/lib/customer-shop-details";
 import { getDatabase, isDatabaseConfigured, type CustomerDocument } from "@/lib/db";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
-import { normalizeMobile } from "@/lib/validation";
 import {
   enqueueShopifySync,
   syncCustomerShopifyNow,
   CUSTOMER_SHOPIFY_SYNC_TIMEOUT_MS,
   type ShopifySyncAttemptResult,
 } from "@/lib/shopify-outbox";
-
-const requiredFields = [
-  ["contactPersonName", "Contact person name"],
-  ["shopName", "Shop name"],
-  ["contactMobileNumber", "Mobile / WhatsApp number"],
-  ["shopAddress", "Shop address"],
-  ["detailedAddress", "Detailed address"],
-  ["city", "City"],
-  ["province", "Province"],
-] as const;
-
-const allowedProvinces = new Set([
-  "Punjab",
-  "Sindh",
-  "Khyber Pakhtunkhwa",
-  "Balochistan",
-  "Islamabad Capital Territory",
-  "Gilgit-Baltistan",
-  "Azad Jammu and Kashmir",
-]);
 
 export async function PATCH(request: Request) {
   const syncDeadlineAt = Date.now() + CUSTOMER_SHOPIFY_SYNC_TIMEOUT_MS;
@@ -46,45 +26,11 @@ export async function PATCH(request: Request) {
   const body = await readJson(request);
   if (!body) return NextResponse.json({ error: "Please submit a valid form." }, { status: 400 });
 
-  const details: Record<(typeof requiredFields)[number][0], string> & {
-    alternateMobileNumber: string;
-    comments: string;
-  } = {
-    contactPersonName: "",
-    shopName: "",
-    contactMobileNumber: "",
-    shopAddress: "",
-    detailedAddress: "",
-    city: "",
-    province: "",
-    alternateMobileNumber: "",
-    comments: "",
-  };
-
-  for (const [field, label] of requiredFields) {
-    const value = typeof body[field] === "string" ? body[field].trim() : "";
-    if (!value || value.length > 2000) {
-      return NextResponse.json({ error: `${label} is required and must be 2,000 characters or fewer.` }, { status: 400 });
-    }
-    details[field] = value;
+  const parsedDetails = parseCustomerShopDetails(body);
+  if ("error" in parsedDetails) {
+    return NextResponse.json({ error: parsedDetails.error }, { status: 400 });
   }
-
-  if (!allowedProvinces.has(details.province)) {
-    return NextResponse.json({ error: "Select a valid province." }, { status: 400 });
-  }
-  const alternateValue = typeof body.alternateMobileNumber === "string" ? body.alternateMobileNumber.trim() : "";
-  const alternateMobileNumber = alternateValue ? normalizeMobile(alternateValue) : "";
-  if (alternateValue && !alternateMobileNumber) {
-    return NextResponse.json({ error: "Enter a valid alternate mobile number with its country code." }, { status: 400 });
-  }
-  const contactMobileNumber = normalizeMobile(body.contactMobileNumber);
-  if (!contactMobileNumber) {
-    return NextResponse.json({ error: "Enter a valid mobile / WhatsApp number with its country code." }, { status: 400 });
-  }
-  const comments = typeof body.comments === "string" ? body.comments.trim() : "";
-  if (comments.length > 1000) {
-    return NextResponse.json({ error: "Comments must be 1,000 characters or fewer." }, { status: 400 });
-  }
+  const details = parsedDetails.details;
 
   try {
     const database = await getDatabase();
@@ -112,13 +58,13 @@ export async function PATCH(request: Request) {
               $set: {
                 "shop_details.contactPersonName": details.contactPersonName,
                 "shop_details.shopName": details.shopName,
-                "shop_details.contactMobileNumber": contactMobileNumber,
-                "shop_details.alternateMobileNumber": alternateMobileNumber,
+                "shop_details.contactMobileNumber": details.contactMobileNumber,
+                "shop_details.alternateMobileNumber": details.alternateMobileNumber,
                 "shop_details.shopAddress": details.shopAddress,
                 "shop_details.detailedAddress": details.detailedAddress,
                 "shop_details.city": details.city,
                 "shop_details.province": details.province,
-                "shop_details.comments": comments,
+                "shop_details.comments": details.comments,
                 "shop_details.updatedAt": now,
                 "shop_details.completedAt": { $ifNull: ["$shop_details.completedAt", now] },
                 "shop_details.syncVersion": {

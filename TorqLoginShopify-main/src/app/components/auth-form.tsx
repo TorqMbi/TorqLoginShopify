@@ -41,6 +41,31 @@ export function AuthForm({ mode }: Props) {
       if (!/^[a-zA-Z0-9._-]{3,32}$/.test(username)) {
         nextFieldErrors.username = "Username must be 3–32 characters using letters, numbers, dots, underscores or hyphens.";
       }
+      for (const [field, label] of [
+        ["contactPersonName", "Contact person name"],
+        ["shopName", "Shop name"],
+        ["shopAddress", "Shop address"],
+        ["detailedAddress", "Detailed address"],
+        ["city", "City"],
+        ["province", "Province"],
+      ]) {
+        if (!String(data[field] ?? "").trim()) nextFieldErrors[field] = `${label} is required.`;
+      }
+      const contactMobileDigits = String(data.contactMobileNumber ?? "")
+        .replace(/\D/g, "")
+        .replace(/^92/, "")
+        .replace(/^0/, "");
+      if (!/^3\d{9}$/.test(contactMobileDigits)) {
+        nextFieldErrors.contactMobileNumber = "Enter a valid mobile number.";
+      }
+      const alternateMobileValue = String(data.alternateMobileNumber ?? "");
+      const alternateMobileDigits = alternateMobileValue
+        .replace(/\D/g, "")
+        .replace(/^92/, "")
+        .replace(/^0/, "");
+      if (alternateMobileValue.trim() && !/^3\d{9}$/.test(alternateMobileDigits)) {
+        nextFieldErrors.alternateMobileNumber = "Enter a valid alternate number.";
+      }
       if (password.length < 12) nextFieldErrors.password = "Password must be at least 12 characters.";
       if (password !== confirmPassword) nextFieldErrors.confirmPassword = "Passwords do not match.";
       if (!formData.has("terms")) nextFieldErrors.terms = "You must agree to the Terms and Conditions.";
@@ -49,6 +74,10 @@ export function AuthForm({ mode }: Props) {
         return;
       }
       data.mobileNumber = `+92${mobileDigits}`;
+      data.contactMobileNumber = `+92${contactMobileDigits}`;
+      data.alternateMobileNumber = alternateMobileValue.trim()
+        ? `+92${alternateMobileDigits}`
+        : "";
     }
     setFieldErrors({});
     setBusy(true);
@@ -79,13 +108,7 @@ export function AuthForm({ mode }: Props) {
       const customerRedirect = ["/store", "/account/details", "/dashboard"].includes(result.redirectTo)
         ? result.redirectTo
         : "/dashboard";
-      window.location.assign(
-        isAdmin
-          ? "/admin"
-          : isSignup
-            ? "/account/details"
-            : customerRedirect,
-      );
+      window.location.assign(isAdmin ? "/admin" : customerRedirect);
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to complete this request.");
     } finally {
@@ -95,7 +118,7 @@ export function AuthForm({ mode }: Props) {
 
   return (
     <form
-      className={`form-stack${isSignup ? " signup-form" : isLogin ? " login-form" : ""}`}
+      className={`form-stack${isSignup ? " signup-form details-form" : isLogin ? " login-form" : ""}`}
       onSubmit={submit}
       noValidate={isSignup || isLogin}
     >
@@ -145,6 +168,74 @@ export function AuthForm({ mode }: Props) {
           />
           {fieldErrors.mobileNumber && <span className="field-error" id="loginIdentifier-error">{fieldErrors.mobileNumber}</span>}
         </div>
+      )}
+      {isSignup && (
+        <div className="signup-shop-details-heading">
+          <h2>Shop details</h2>
+          <p>Required so we can review your account and contact your shop.</p>
+        </div>
+      )}
+      {isSignup && (
+        <>
+          <div className="field">
+            <label htmlFor="contactPersonName">Contact person name <span className="details-required">*</span></label>
+            <input id="contactPersonName" name="contactPersonName" autoComplete="name" maxLength={2000} required aria-invalid={Boolean(fieldErrors.contactPersonName)} onChange={() => setFieldErrors((current) => ({ ...current, contactPersonName: "" }))} />
+            {fieldErrors.contactPersonName && <span className="field-error">{fieldErrors.contactPersonName}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="shopName">Shop name <span className="details-required">*</span></label>
+            <input id="shopName" name="shopName" maxLength={2000} required aria-invalid={Boolean(fieldErrors.shopName)} onChange={() => setFieldErrors((current) => ({ ...current, shopName: "" }))} />
+            {fieldErrors.shopName && <span className="field-error">{fieldErrors.shopName}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="contactMobileNumber">Mobile / WhatsApp number <span className="details-required">*</span></label>
+            <div className={`signup-mobile-box${fieldErrors.contactMobileNumber ? " has-error" : ""}`}>
+              <span className="signup-mobile-prefix" aria-hidden="true">+92</span>
+              <input id="contactMobileNumber" name="contactMobileNumber" type="tel" autoComplete="tel" inputMode="numeric" maxLength={15} required placeholder="3XX XXXXXXX" aria-invalid={Boolean(fieldErrors.contactMobileNumber)} onChange={() => setFieldErrors((current) => ({ ...current, contactMobileNumber: "" }))} />
+            </div>
+            <span className="field-hint">We will contact you on this number.</span>
+            {fieldErrors.contactMobileNumber && <span className="field-error">{fieldErrors.contactMobileNumber}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="alternateMobileNumber">Alternate number <span className="details-optional">(optional)</span></label>
+            <div className={`signup-mobile-box${fieldErrors.alternateMobileNumber ? " has-error" : ""}`}>
+              <span className="signup-mobile-prefix" aria-hidden="true">+92</span>
+              <input id="alternateMobileNumber" name="alternateMobileNumber" type="tel" autoComplete="tel" inputMode="numeric" maxLength={15} placeholder="3XX XXXXXXX" aria-invalid={Boolean(fieldErrors.alternateMobileNumber)} onChange={() => setFieldErrors((current) => ({ ...current, alternateMobileNumber: "" }))} />
+            </div>
+            {fieldErrors.alternateMobileNumber && <span className="field-error">{fieldErrors.alternateMobileNumber}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="shopAddress">Shop address <span className="details-required">*</span></label>
+            <input id="shopAddress" name="shopAddress" maxLength={2000} required placeholder="Shop number, building or market" aria-invalid={Boolean(fieldErrors.shopAddress)} onChange={() => setFieldErrors((current) => ({ ...current, shopAddress: "" }))} />
+            {fieldErrors.shopAddress && <span className="field-error">{fieldErrors.shopAddress}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="detailedAddress">Detailed address <span className="details-required">*</span></label>
+            <textarea id="detailedAddress" name="detailedAddress" maxLength={2000} required rows={3} placeholder="Street, area and nearby landmark" aria-invalid={Boolean(fieldErrors.detailedAddress)} onChange={() => setFieldErrors((current) => ({ ...current, detailedAddress: "" }))} />
+            {fieldErrors.detailedAddress && <span className="field-error">{fieldErrors.detailedAddress}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="city">City <span className="details-required">*</span></label>
+            <input id="city" name="city" maxLength={2000} required placeholder="Lahore" aria-invalid={Boolean(fieldErrors.city)} onChange={() => setFieldErrors((current) => ({ ...current, city: "" }))} />
+            {fieldErrors.city && <span className="field-error">{fieldErrors.city}</span>}
+          </div>
+          <div className="field">
+            <label htmlFor="province">Province <span className="details-required">*</span></label>
+            <div className="province-select-wrap">
+              <select id="province" name="province" required defaultValue="" aria-invalid={Boolean(fieldErrors.province)} onChange={() => setFieldErrors((current) => ({ ...current, province: "" }))}>
+                <option value="" disabled>Select province</option>
+                <option>Punjab</option>
+                <option>Sindh</option>
+                <option>Khyber Pakhtunkhwa</option>
+                <option>Balochistan</option>
+                <option>Islamabad Capital Territory</option>
+                <option>Gilgit-Baltistan</option>
+                <option>Azad Jammu and Kashmir</option>
+              </select>
+            </div>
+            {fieldErrors.province && <span className="field-error">{fieldErrors.province}</span>}
+          </div>
+        </>
       )}
       {isSignup && (
         <div className="field">
