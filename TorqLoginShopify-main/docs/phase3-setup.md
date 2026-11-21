@@ -43,6 +43,12 @@ The Shopify Admin GraphQL API version is pinned in `src/lib/shopify.ts`. Set `AP
    Staff sign in at `/admin/login`; the same staff accounts manage verification at `/admin` and other staff at `/admin/staff`.
 6. To process one local outbox batch in Codespaces, run `npm run shopify:sync-once`. It loads `.env.local`, reuses the existing worker, processes up to eight jobs, prints sanitized counts/errors, and exits non-zero if any job fails.
 
+## Password-reset OTP delivery
+
+- For local development, set `OTP_PROVIDER=log`; codes are printed to the server console. This provider is disabled in production.
+- For live OTP delivery, set `OTP_PROVIDER=whatsapp` and configure `WHATSAPP_PHONE_NUMBER_ID`, `WHATSAPP_ACCESS_TOKEN`, and `WHATSAPP_OTP_TEMPLATE`. The template must be an approved WhatsApp Authentication template with a copy-code button. `WHATSAPP_OTP_TEMPLATE_LANGUAGE` and `WHATSAPP_GRAPH_VERSION` are optional.
+- Add these values to the live host's server-side environment variables (for Netlify: **Site configuration → Environment variables**) and redeploy. The reset page always opens the mobile-number/OTP flow, but codes cannot be sent until the WhatsApp settings are configured.
+
 ## Netlify deploy and scheduled worker
 
 1. Configure the environment variables above in Netlify Site configuration. Keep Shopify credentials server-only. Token caching uses the existing shared MongoDB database, so each serverless instance can safely reuse the encrypted token. Add the admin credential variables only long enough to seed the initial admin, then remove them.

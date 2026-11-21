@@ -5,11 +5,9 @@ import { FormEvent, useState } from "react";
 
 type Props = {
   mode: "signup" | "login" | "admin";
-  /** Set when password reset by code is available; otherwise the link opens a WhatsApp chat. */
-  forgotPasswordHref?: string;
 };
 
-export function AuthForm({ mode, forgotPasswordHref }: Props) {
+export function AuthForm({ mode }: Props) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -202,20 +200,10 @@ export function AuthForm({ mode, forgotPasswordHref }: Props) {
           )}
         </div>
         {isSignup && <span className="field-hint" id="password-hint">At least 12 characters.</span>}
-        {isLogin && forgotPasswordHref && (
-          <Link className="login-forgot-link" href={forgotPasswordHref}>
+        {isLogin && (
+          <Link className="login-forgot-link" href="/forgot-password">
             Forgot password?
           </Link>
-        )}
-        {isLogin && !forgotPasswordHref && (
-          <a
-            className="login-forgot-link"
-            href="https://wa.me/923214073811?text=Hello%20TORQ%20Bearings%2C%20I%20forgot%20my%20password."
-            target="_blank"
-            rel="noreferrer"
-          >
-            Forgot password?
-          </a>
         )}
         {fieldErrors.password && <span className="field-error" id="password-error">{fieldErrors.password}</span>}
       </div>
