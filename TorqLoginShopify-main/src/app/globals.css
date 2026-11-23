@@ -1391,6 +1391,7 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   background: #1b1e22;
   font-family: "Inter", "Segoe UI", sans-serif;
 }
+.storefront .customer-site-header { position: static; }
 .storefront-header {
   min-height: 60px;
   padding: 0 max(20px, calc((100% - 1040px) / 2));
@@ -1523,7 +1524,7 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 .store-search-bar {
   position: sticky;
   top: 0;
-  z-index: 15;
+  z-index: 50;
   display: flex;
   align-items: center;
   gap: 16px;
