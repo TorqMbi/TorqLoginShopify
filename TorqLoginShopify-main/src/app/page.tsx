@@ -12,7 +12,7 @@ const orderingSteps = [
   "Sign up to create your free account",
   "Add your shop details one time",
   "Browse bearings and add cartons to your cart",
-  "Confirm your order; payment is due later",
+  "Make payment and goods delivered within 3-4 days",
 ];
 
 export default async function HomePage() {
@@ -35,16 +35,12 @@ export default async function HomePage() {
 
         <div className="landing-content">
           <section className="landing-account-card" aria-labelledby="landing-title">
-            <h1 id="landing-title">Wholesale bearings for shops and businesses</h1>
-            <p>
-              Sign up or create a free account to see our full catalog, live carton stock and wholesale prices.
-            </p>
+            <h1 id="landing-title">Sign up, Sign in, and Stay connected.</h1>
             {homeAction && (
               <div className="landing-actions">
                 <Link className="landing-action-link" href={homeAction.href}>{homeAction.label}</Link>
               </div>
             )}
-            <small>New customers can register with their mobile number. Catalog access follows account approval.</small>
           </section>
 
           <section className="landing-process" id="how-it-works" aria-labelledby="landing-process-title">
