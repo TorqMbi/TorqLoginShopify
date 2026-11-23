@@ -66,6 +66,11 @@ export default async function CustomerDashboard() {
                 Browse Products
               </Link>
             )}
+            {status === "pending" && (
+              <Link className="button account-browse-button" href="/">
+                Go to Home
+              </Link>
+            )}
           </div>
         </section>
       </main>
