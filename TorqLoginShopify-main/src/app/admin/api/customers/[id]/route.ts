@@ -64,8 +64,8 @@ export async function GET(_request: Request, context: RouteContext) {
         pricing: cityPricing
           ? {
             city: cityPricing.name,
-            adjustmentPercent: cityPricing.adjustmentPercent,
             productPrices: cityPricing.overrides.size,
+            legacyAdjustmentPercent: cityPricing.legacyAdjustmentPercent,
           }
           : null,
         shopifySync: {

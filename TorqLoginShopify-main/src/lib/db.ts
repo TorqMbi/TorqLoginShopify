@@ -29,12 +29,14 @@ export type CustomerDocument = {
   passwordResetExpiresAt?: Date;
 };
 
-// A city's price list, set by admins in the portal. Customers whose shop city
-// matches `nameKey` see these prices; everyone else sees the Shopify price.
+// A city's price table, set by admins in the portal. Customers whose shop city
+// matches `nameKey` pay these prices; other products and cities use the
+// Shopify price. `adjustmentPercent` only exists on lists saved before the %
+// was removed, and is dropped the next time the list is saved.
 export type CityPriceDocument = {
   name: string;
   nameKey: string;
-  adjustmentPercent: number;
+  adjustmentPercent?: number;
   overrides: Array<{ variantId: string; price: number }>;
   createdAt: Date;
   updatedAt: Date;

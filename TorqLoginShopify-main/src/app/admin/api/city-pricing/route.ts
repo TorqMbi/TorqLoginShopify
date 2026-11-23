@@ -1,13 +1,6 @@
 import { NextResponse } from "next/server";
 import { authorizeStaff, isStaffRequestSameOrigin } from "@/lib/admin-api";
-import {
-  CITY_PRICES_COLLECTION,
-  MAX_ADJUSTMENT_PERCENT,
-  MIN_ADJUSTMENT_PERCENT,
-  cityKey,
-  cleanCityName,
-  parseAdjustmentPercent,
-} from "@/lib/city-pricing";
+import { CITY_PRICES_COLLECTION, cityKey, cleanCityName } from "@/lib/city-pricing";
 import { getDatabase, isDatabaseConfigured, type CityPriceDocument } from "@/lib/db";
 import { badOrigin, readJson } from "@/lib/http";
 
@@ -26,8 +19,8 @@ export async function GET() {
       cities: cities.map((city) => ({
         id: city._id.toString(),
         name: city.name,
-        adjustmentPercent: city.adjustmentPercent,
         overrides: city.overrides,
+        legacyAdjustmentPercent: city.adjustmentPercent ?? 0,
         updatedAt: city.updatedAt,
         updatedBy: city.updatedBy,
       })),
@@ -50,20 +43,12 @@ export async function POST(request: Request) {
   if (!name) {
     return NextResponse.json({ error: "Enter a city name of 2–30 letters." }, { status: 400 });
   }
-  const adjustmentPercent = parseAdjustmentPercent(body?.adjustmentPercent);
-  if (adjustmentPercent === null) {
-    return NextResponse.json(
-      { error: `Enter an adjustment between ${MIN_ADJUSTMENT_PERCENT}% and +${MAX_ADJUSTMENT_PERCENT}%.` },
-      { status: 400 },
-    );
-  }
 
   try {
     const now = new Date();
     await (await getDatabase()).collection<CityPriceDocument>(CITY_PRICES_COLLECTION).insertOne({
       name,
       nameKey: cityKey(name),
-      adjustmentPercent,
       overrides: [],
       createdAt: now,
       updatedAt: now,

@@ -144,10 +144,10 @@ describe("approved customer Shopify checkout", () => {
     mocks.findCityPrice.mockResolvedValue(null);
   });
 
-  it("charges the shop's city price and sends it to Shopify", async () => {
+  it("charges the price in the shop's city table and sends it to Shopify", async () => {
     mocks.findCityPrice.mockImplementation(async (filter: Record<string, unknown>) =>
       filter.nameKey === "lahore"
-        ? { name: "Lahore", adjustmentPercent: 10, overrides: [] }
+        ? { name: "Lahore", overrides: [{ variantId: productVariant.variantId, price: 35000 }] }
         : null,
     );
     const response = await POST(request({
@@ -158,19 +158,18 @@ describe("approved customer Shopify checkout", () => {
     expect(response.status).toBe(201);
     expect(mocks.findCityPrice).toHaveBeenCalledWith({ nameKey: "lahore" });
     expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 35000 }],
       priceCity: "Lahore",
     }), expect.anything());
     expect([...orders.values()][0].items).toEqual([
-      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 40920 }),
+      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 35000 }),
     ]);
   });
 
-  it("uses an exact city product price ahead of the city adjustment", async () => {
+  it("charges the Shopify price for products not in the city's table", async () => {
     mocks.findCityPrice.mockResolvedValue({
       name: "Lahore",
-      adjustmentPercent: 10,
-      overrides: [{ variantId: productVariant.variantId, price: 35000 }],
+      overrides: [{ variantId: "gid://shopify/ProductVariant/7", price: 100 }],
     });
     const response = await POST(request({
       checkoutKey,
@@ -178,8 +177,26 @@ describe("approved customer Shopify checkout", () => {
     }));
 
     expect(response.status).toBe(201);
+    // No custom price on the Shopify line, so Shopify shows its own price.
     expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 1, unitPrice: 35000 }],
+      items: [{ variantId: productVariant.variantId, quantity: 1 }],
+      priceCity: "Lahore",
+    }), expect.anything());
+    expect([...orders.values()][0].items).toEqual([
+      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 37200 }),
+    ]);
+  });
+
+  it("keeps an old list's % adjustment until staff save the list again", async () => {
+    mocks.findCityPrice.mockResolvedValue({ name: "Lahore", adjustmentPercent: 10, overrides: [] });
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 1 }],
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
+      items: [{ variantId: productVariant.variantId, quantity: 1, unitPrice: 40920 }],
     }), expect.anything());
   });
 

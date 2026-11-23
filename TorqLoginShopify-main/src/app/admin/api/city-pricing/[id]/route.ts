@@ -1,14 +1,7 @@
 import { NextResponse } from "next/server";
 import { ObjectId } from "mongodb";
 import { authorizeStaff, isStaffRequestSameOrigin } from "@/lib/admin-api";
-import {
-  CITY_PRICES_COLLECTION,
-  MAX_ADJUSTMENT_PERCENT,
-  MAX_PRICE_OVERRIDES,
-  MIN_ADJUSTMENT_PERCENT,
-  parseAdjustmentPercent,
-  parsePriceOverrides,
-} from "@/lib/city-pricing";
+import { CITY_PRICES_COLLECTION, MAX_PRICE_OVERRIDES, parsePriceOverrides } from "@/lib/city-pricing";
 import { getDatabase, isDatabaseConfigured, type CityPriceDocument } from "@/lib/db";
 import { badOrigin, readJson } from "@/lib/http";
 
@@ -36,31 +29,26 @@ export async function PATCH(request: Request, context: RouteContext) {
   if (!/^[\da-f]{24}$/i.test(id)) return NextResponse.json({ error: NOT_FOUND }, { status: 404 });
 
   const body = await readJson(request);
-  const adjustmentPercent = parseAdjustmentPercent(body?.adjustmentPercent);
-  if (adjustmentPercent === null) {
-    return NextResponse.json(
-      { error: `Enter an adjustment between ${MIN_ADJUSTMENT_PERCENT}% and +${MAX_ADJUSTMENT_PERCENT}%.` },
-      { status: 400 },
-    );
-  }
   const overrides = parsePriceOverrides(body?.overrides);
   if (overrides === null) {
     return NextResponse.json(
-      { error: `Each exact price must be more than 0, for up to ${MAX_PRICE_OVERRIDES.toLocaleString("en-US")} products.` },
+      { error: `Each price must be more than 0, for up to ${MAX_PRICE_OVERRIDES.toLocaleString("en-US")} products.` },
       { status: 400 },
     );
   }
 
   try {
+    // Saving replaces the whole table and drops any old % adjustment, so the
+    // city's prices are exactly what staff saw in the table.
     const result = await (await getDatabase()).collection<CityPriceDocument>(CITY_PRICES_COLLECTION).findOneAndUpdate(
       { _id: new ObjectId(id) },
       {
         $set: {
-          adjustmentPercent,
           overrides,
           updatedAt: new Date(),
           updatedBy: authorization.staff!.username,
         },
+        $unset: { adjustmentPercent: "" },
       },
       { returnDocument: "after", projection: { name: 1 } },
     );
