@@ -33,8 +33,8 @@ describe("approved Shopify product API", () => {
     ]);
     mocks.getCustomerCityPricing.mockResolvedValue({
       name: "Karachi",
-      adjustmentPercent: 5,
       overrides: new Map([["gid://shopify/ProductVariant/2", 9000]]),
+      legacyAdjustmentPercent: 0,
     });
     const response = await GET();
 
@@ -42,7 +42,7 @@ describe("approved Shopify product API", () => {
     expect(mocks.getCustomerCityPricing).toHaveBeenCalledWith("customer-1");
     const { products } = await response.json();
     expect(products.map((product: { cartonPrice: number; pricePerPiece: number | null }) =>
-      [product.cartonPrice, product.pricePerPiece])).toEqual([[12600, 126], [9000, null]]);
+      [product.cartonPrice, product.pricePerPiece])).toEqual([[12000, 120], [9000, null]]);
   });
 
   it("returns active products for approved customers", async () => {

@@ -9,7 +9,6 @@ import {
   cityKey,
   cityUnitPrice,
   cleanCityName,
-  parseAdjustmentPercent,
   parsePriceOverrides,
   resolveDetailsCity,
   toCityPricing,
@@ -35,15 +34,6 @@ describe("city names and admin input", () => {
     expect(cleanCityName("A".repeat(31))).toBeNull();
   });
 
-  it("allows adjustments from -50% to +100%", () => {
-    expect(parseAdjustmentPercent(5)).toBe(5);
-    expect(parseAdjustmentPercent(-3.256)).toBe(-3.26);
-    expect(parseAdjustmentPercent(-51)).toBeNull();
-    expect(parseAdjustmentPercent(101)).toBeNull();
-    expect(parseAdjustmentPercent("5")).toBeNull();
-    expect(parseAdjustmentPercent(Number.NaN)).toBeNull();
-  });
-
   it("accepts only positive exact prices for real product variants, once each", () => {
     expect(parsePriceOverrides([{ variantId: VARIANT_A, price: 14800 }])).toEqual([
       { variantId: VARIANT_A, price: 14800 },
@@ -62,7 +52,6 @@ describe("city names and admin input", () => {
 describe("city prices", () => {
   const karachi = toCityPricing({
     name: "Karachi",
-    adjustmentPercent: 5,
     overrides: [{ variantId: VARIANT_B, price: 14800 }],
   });
 
@@ -70,26 +59,39 @@ describe("city prices", () => {
     expect(cityUnitPrice(12000, VARIANT_A, null)).toBe(12000);
   });
 
-  it("applies the city adjustment, rounded to the nearest rupee", () => {
-    expect(cityUnitPrice(12000, VARIANT_A, karachi)).toBe(12600);
-    expect(cityUnitPrice(9999, VARIANT_A, karachi)).toBe(10499);
-    const discount = toCityPricing({ name: "Multan", adjustmentPercent: -3, overrides: [] });
-    expect(cityUnitPrice(9500, VARIANT_A, discount)).toBe(9215);
+  it("charges the price in the city's table", () => {
+    expect(cityUnitPrice(15000, VARIANT_B, karachi)).toBe(14800);
   });
 
-  it("uses an exact product price ahead of the adjustment", () => {
-    expect(cityUnitPrice(15000, VARIANT_B, karachi)).toBe(14800);
+  it("charges the Shopify price for products not in the city's table", () => {
+    expect(karachi.legacyAdjustmentPercent).toBe(0);
+    expect(cityUnitPrice(12000, VARIANT_A, karachi)).toBe(12000);
+    const saved = toCityPricing({ name: "Karachi", adjustmentPercent: 0, overrides: [] });
+    expect(cityUnitPrice(12000, VARIANT_A, saved)).toBe(12000);
+  });
+
+  it("keeps an old list's % on products without a table price until the list is saved again", () => {
+    const old = toCityPricing({
+      name: "Karachi",
+      adjustmentPercent: 5,
+      overrides: [{ variantId: VARIANT_B, price: 14800 }],
+    });
+    expect(cityUnitPrice(12000, VARIANT_A, old)).toBe(12600);
+    expect(cityUnitPrice(9999, VARIANT_A, old)).toBe(10499);
+    expect(cityUnitPrice(15000, VARIANT_B, old)).toBe(14800);
+    const discount = toCityPricing({ name: "Multan", adjustmentPercent: -3, overrides: [] });
+    expect(cityUnitPrice(9500, VARIANT_A, discount)).toBe(9215);
   });
 
   it("updates carton and piece prices on the product list", () => {
     const products = [
       { variantId: VARIANT_A, cartonPrice: 12000, piecesPerCarton: 100, pricePerPiece: 120 },
-      { variantId: VARIANT_B, cartonPrice: 15000, piecesPerCarton: null, pricePerPiece: null },
+      { variantId: VARIANT_B, cartonPrice: 15000, piecesPerCarton: 100, pricePerPiece: 150 },
       { variantId: "gid://shopify/ProductVariant/3", cartonPrice: null, piecesPerCarton: 10, pricePerPiece: null },
     ] as ShopifyStoreProduct[];
 
     expect(applyCityPricing(products, karachi).map((product) => [product.cartonPrice, product.pricePerPiece]))
-      .toEqual([[12600, 126], [14800, null], [null, null]]);
+      .toEqual([[12000, 120], [14800, 148], [null, null]]);
     expect(applyCityPricing(products, null)).toBe(products);
   });
 });

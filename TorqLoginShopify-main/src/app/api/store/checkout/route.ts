@@ -414,10 +414,14 @@ export async function POST(request: Request) {
             city: details.city,
             province: details.province,
           },
-          // City-priced orders carry each line's price; others use the Shopify price.
+          // A line whose city price differs from Shopify carries that price;
+          // every other line uses the Shopify price, as on normal orders.
           ...(cityPricing
             ? {
-              items: lineItems.map(({ variantId, quantity, unitPrice }) => ({ variantId, quantity, unitPrice })),
+              items: lineItems.map(({ variantId, quantity, unitPrice }) =>
+                unitPrice === variants.find((variant) => variant.variantId === variantId)?.unitPrice
+                  ? { variantId, quantity }
+                  : { variantId, quantity, unitPrice }),
               priceCity: cityPricing.name,
             }
             : { items: checkout.items }),

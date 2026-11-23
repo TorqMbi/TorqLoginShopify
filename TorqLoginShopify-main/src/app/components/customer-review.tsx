@@ -22,7 +22,7 @@ type CustomerData = {
     comments: string;
     submittedAt: string | null;
   };
-  pricing?: { city: string; adjustmentPercent: number; productPrices: number } | null;
+  pricing?: { city: string; productPrices: number; legacyAdjustmentPercent: number } | null;
   shopifySync: {
     state: ShopifySyncState;
     lastError: string;
@@ -48,9 +48,12 @@ function syncLabel(state: ShopifySyncState): string {
 
 function pricingLabel(pricing: CustomerData["pricing"]): string {
   if (!pricing) return "Standard Shopify prices (city has no price list)";
-  const sign = pricing.adjustmentPercent > 0 ? "+" : "";
-  const exact = pricing.productPrices === 1 ? "1 exact product price" : `${pricing.productPrices} exact product prices`;
-  return `${pricing.city} price list (${sign}${pricing.adjustmentPercent}%, ${exact})`;
+  const priced = pricing.productPrices === 1 ? "1 product" : `${pricing.productPrices} products`;
+  const legacy = pricing.legacyAdjustmentPercent;
+  const rest = legacy === 0
+    ? "Shopify price for the rest"
+    : `old ${legacy > 0 ? "+" : ""}${legacy}% rule on the rest until the list is saved`;
+  return `${pricing.city} price list (${priced} at ${pricing.city} prices, ${rest})`;
 }
 
 export function CustomerReview({ customerId }: { customerId: string }) {

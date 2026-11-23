@@ -46,9 +46,9 @@ describe("admin city pricing API", () => {
 
   it("is limited to admin accounts", async () => {
     mocks.getStaffSession.mockResolvedValue({ ...admin, role: "staff" });
-    expect((await POST(request("POST", { name: "Karachi", adjustmentPercent: 5 }))).status).toBe(403);
+    expect((await POST(request("POST", { name: "Karachi" }))).status).toBe(403);
     mocks.getStaffSession.mockResolvedValue(null);
-    expect((await PATCH(request("PATCH", { adjustmentPercent: 5, overrides: [] }), context)).status).toBe(401);
+    expect((await PATCH(request("PATCH", { overrides: [] }), context)).status).toBe(401);
     expect(mocks.insertOne).not.toHaveBeenCalled();
     expect(mocks.findOneAndUpdate).not.toHaveBeenCalled();
   });
@@ -59,36 +59,36 @@ describe("admin city pricing API", () => {
     expect(mocks.findOneAndDelete).not.toHaveBeenCalled();
   });
 
-  it("creates a city price list with a tidy name and matching key", async () => {
+  it("creates a city price list with a tidy name, matching key and no prices yet", async () => {
     const response = await POST(request("POST", { name: "  karachi ", adjustmentPercent: 5 }));
 
     expect(response.status).toBe(201);
+    // A % sent by an old screen is ignored; 0 is stored for older app versions.
     expect(mocks.insertOne).toHaveBeenCalledWith(expect.objectContaining({
       name: "karachi",
       nameKey: "karachi",
-      adjustmentPercent: 5,
+      adjustmentPercent: 0,
       overrides: [],
       updatedBy: "owner",
     }));
   });
 
-  it("rejects bad city names, adjustments and duplicate cities", async () => {
-    expect((await POST(request("POST", { name: "<b>", adjustmentPercent: 5 }))).status).toBe(400);
-    expect((await POST(request("POST", { name: "Karachi", adjustmentPercent: 500 }))).status).toBe(400);
+  it("rejects bad city names and duplicate cities", async () => {
+    expect((await POST(request("POST", { name: "<b>" }))).status).toBe(400);
     mocks.insertOne.mockRejectedValueOnce({ code: 11000 });
-    const duplicate = await POST(request("POST", { name: "Karachi", adjustmentPercent: 5 }));
+    const duplicate = await POST(request("POST", { name: "Karachi" }));
     expect(duplicate.status).toBe(409);
     await expect(duplicate.json()).resolves.toEqual({ error: "Karachi already has a price list." });
   });
 
-  it("saves the adjustment and exact product prices together", async () => {
+  it("saves the city's price table and sets any old % adjustment to 0", async () => {
     const overrides = [{ variantId: "gid://shopify/ProductVariant/2", price: 14800 }];
     const response = await PATCH(request("PATCH", { adjustmentPercent: -3, overrides }), context);
 
     expect(response.status).toBe(200);
     expect(mocks.findOneAndUpdate).toHaveBeenCalledWith(
       { _id: new ObjectId(cityId) },
-      { $set: expect.objectContaining({ adjustmentPercent: -3, overrides, updatedBy: "owner" }) },
+      { $set: expect.objectContaining({ adjustmentPercent: 0, overrides, updatedBy: "owner" }) },
       expect.anything(),
     );
   });
@@ -100,7 +100,7 @@ describe("admin city pricing API", () => {
       [{ variantId: "gid://shopify/Product/2", price: 100 }],
       "not-a-list",
     ]) {
-      const response = await PATCH(request("PATCH", { adjustmentPercent: 0, overrides }), context);
+      const response = await PATCH(request("PATCH", { overrides }), context);
       expect(response.status).toBe(400);
     }
     expect(mocks.findOneAndUpdate).not.toHaveBeenCalled();
@@ -109,7 +109,7 @@ describe("admin city pricing API", () => {
   it("reports a missing price list", async () => {
     mocks.findOneAndUpdate.mockResolvedValue(null);
     mocks.findOneAndDelete.mockResolvedValue(null);
-    expect((await PATCH(request("PATCH", { adjustmentPercent: 0, overrides: [] }), context)).status).toBe(404);
+    expect((await PATCH(request("PATCH", { overrides: [] }), context)).status).toBe(404);
     expect((await DELETE(request("DELETE"), context)).status).toBe(404);
     const badId = { params: Promise.resolve({ id: "not-an-id" }) };
     expect((await DELETE(request("DELETE"), badId)).status).toBe(404);

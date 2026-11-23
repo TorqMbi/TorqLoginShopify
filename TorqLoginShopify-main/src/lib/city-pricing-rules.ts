@@ -1,13 +1,10 @@
 import type { ShopifyStoreProduct } from "@/lib/shopify";
 
-// City pricing: admins give each city a percentage adjustment on the Shopify
-// price, plus optional exact prices for single products. Customers see the
-// price list of the city saved on their shop details; a city without a price
-// list gets the normal Shopify price.
+// City pricing: admins keep a price table for each city. Shops in that city
+// pay the table price for a product; a product without one, and every product
+// in a city without a table, costs the normal Shopify price.
 
 export const CITY_PRICES_COLLECTION = "city_prices";
-export const MIN_ADJUSTMENT_PERCENT = -50;
-export const MAX_ADJUSTMENT_PERCENT = 100;
 export const MAX_CITY_PRICE = 100_000_000;
 export const MAX_PRICE_OVERRIDES = 2_000;
 export const CITY_LOCKED_MESSAGE =
@@ -21,8 +18,11 @@ export type CityPriceOverride = { variantId: string; price: number };
 
 export type CityPricing = {
   name: string;
-  adjustmentPercent: number;
   overrides: ReadonlyMap<string, number>;
+  // Price lists saved before the % adjustment was removed (Nov 2026) can still
+  // carry one. It covers products without a table price until staff save the
+  // list again, so shops' prices don't change when this version goes live.
+  legacyAdjustmentPercent: number;
 };
 
 export function cityKey(value: unknown): string {
@@ -37,12 +37,6 @@ export function cleanCityName(value: unknown): string | null {
 
 function roundToCents(value: number): number {
   return Math.round(value * 100) / 100;
-}
-
-export function parseAdjustmentPercent(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  if (value < MIN_ADJUSTMENT_PERCENT || value > MAX_ADJUSTMENT_PERCENT) return null;
-  return roundToCents(value);
 }
 
 export function parseCityPrice(value: unknown): number | null {
@@ -71,28 +65,29 @@ export function parsePriceOverrides(value: unknown): CityPriceOverride[] | null 
 
 export function toCityPricing(document: {
   name: string;
-  adjustmentPercent: number;
   overrides: CityPriceOverride[];
+  adjustmentPercent?: number;
 }): CityPricing {
+  const legacy = document.adjustmentPercent;
   return {
     name: document.name,
-    adjustmentPercent: document.adjustmentPercent,
     overrides: new Map(document.overrides.map(({ variantId, price }) => [variantId, price])),
+    legacyAdjustmentPercent: typeof legacy === "number" && Number.isFinite(legacy) ? legacy : 0,
   };
 }
 
-// An exact product price wins; otherwise the city's percentage is applied to
-// the Shopify price and rounded to the nearest rupee.
+// The city's table price wins; otherwise the Shopify price applies (with an
+// old list's % on top, rounded to the nearest rupee, until it is re-saved).
 export function cityUnitPrice(
   basePrice: number,
   variantId: string,
   pricing: CityPricing | null,
 ): number {
   if (!pricing) return basePrice;
-  const override = pricing.overrides.get(variantId);
-  if (override !== undefined) return override;
-  if (pricing.adjustmentPercent === 0) return basePrice;
-  return Math.max(0, Math.round((basePrice * (100 + pricing.adjustmentPercent)) / 100));
+  const tablePrice = pricing.overrides.get(variantId);
+  if (tablePrice !== undefined) return tablePrice;
+  if (pricing.legacyAdjustmentPercent === 0) return basePrice;
+  return Math.max(0, Math.round((basePrice * (100 + pricing.legacyAdjustmentPercent)) / 100));
 }
 
 export function applyCityPricing(
