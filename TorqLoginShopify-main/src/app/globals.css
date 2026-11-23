@@ -967,7 +967,7 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   background: #1c2027;
   box-shadow: 0 24px 70px rgba(0, 0, 0, .3);
 }
-.signup-card-header { display: grid; gap: 8px; margin-bottom: 24px; }
+.signup-card-header { display: grid; gap: 8px; margin-bottom: 24px; text-align: center; }
 .signup-card-header h1 {
   margin: 0;
   color: #f3f4f6;
@@ -997,7 +997,11 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 .signup-form .field,
 .login-form .field { gap: 6px; min-width: 0; }
 .signup-form .field > label,
-.login-form .field > label { color: #f3f4f6; font-size: 14px; font-weight: 600; }
+.login-form .field > label {
+  color: #f3f4f6;
+  font-size: 14px;
+  font-weight: 600;
+}
 .signup-form .field > input,
 .login-form .field > input,
 .signup-password-box input {

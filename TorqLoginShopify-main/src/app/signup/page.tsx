@@ -12,8 +12,7 @@ export default function SignupPage() {
           <AuthBackLink />
           <section className="signup-card">
             <header className="signup-card-header">
-              <h1>Create your TORQ account</h1>
-              <p>Create your account and add your shop details. Required information helps our team review your account.</p>
+              <h1>Signup</h1>
             </header>
             <AuthForm mode="signup" />
             <p className="signup-login-prompt">

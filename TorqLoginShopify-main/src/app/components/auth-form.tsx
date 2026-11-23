@@ -170,12 +170,6 @@ export function AuthForm({ mode }: Props) {
         </div>
       )}
       {isSignup && (
-        <div className="signup-shop-details-heading">
-          <h2>Shop details</h2>
-          <p>Required so we can review your account and contact your shop.</p>
-        </div>
-      )}
-      {isSignup && (
         <>
           <div className="field">
             <label htmlFor="contactPersonName">Contact person name <span className="details-required">*</span></label>
