@@ -24,7 +24,7 @@ export async function POST(request: Request) {
     if (!customer || !(await bcrypt.compare(body.password, customer.passwordHash))) {
       return NextResponse.json({ error: "Invalid mobile number or password." }, { status: 401 });
     }
-
+// check the code
     await createSession("customer", customer._id.toString());
     const redirectTo = !customer.shop_details?.completedAt
       ? "/account/details"
