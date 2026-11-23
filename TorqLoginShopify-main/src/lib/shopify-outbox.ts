@@ -9,6 +9,7 @@ import {
 import {
   ensureShopifyCustomer,
   getShopifyCustomerTags,
+  ShopifyCustomerNotFoundError,
   writeShopifyMetafields,
   writeShopifyStatusTags,
   type ShopifyRequestOptions,
@@ -32,7 +33,10 @@ export async function enqueueShopifySync(
   database: Db,
   customerId: ObjectId,
   version: number,
-  session?: import("mongodb").ClientSession,
+  options: {
+    session?: import("mongodb").ClientSession;
+    repairShopifyLink?: boolean;
+  } = {},
 ): Promise<void> {
   const now = new Date();
   await database.collection<ShopifySyncJobDocument>("shopify_sync_jobs").updateOne(
@@ -41,6 +45,7 @@ export async function enqueueShopifySync(
       $set: {
         customerId,
         version,
+        repairShopifyLink: options.repairShopifyLink ?? false,
         status: "pending",
         attempts: 0,
         nextAttemptAt: now,
@@ -50,7 +55,7 @@ export async function enqueueShopifySync(
       $setOnInsert: { createdAt: now },
       $unset: { leaseUntil: "", syncedAt: "" },
     },
-    { upsert: true, ...(session ? { session } : {}) },
+    { upsert: true, ...(options.session ? { session: options.session } : {}) },
   );
 }
 
@@ -120,13 +125,21 @@ async function runSyncJob(
   }
 
   try {
-    const shopifyCustomerId =
-      customer.shopifyCustomerId ??
-      (await ensureShopifyCustomer(
-        details.contactMobileNumber,
-        details.contactPersonName || customer.username,
-        options,
-      ));
+    let shopifyCustomerId = customer.shopifyCustomerId;
+    let existingShopifyTags: string[] | undefined;
+    if (shopifyCustomerId && job.repairShopifyLink) {
+      try {
+        existingShopifyTags = await getShopifyCustomerTags(shopifyCustomerId, options);
+      } catch (error) {
+        if (!(error instanceof ShopifyCustomerNotFoundError)) throw error;
+        shopifyCustomerId = undefined;
+      }
+    }
+    shopifyCustomerId ??= await ensureShopifyCustomer(
+      details.contactMobileNumber,
+      details.contactPersonName || customer.username,
+      options,
+    );
 
     const linked = await customers.updateOne(
       { _id: customer._id, "shop_details.syncVersion": job.version },
@@ -134,7 +147,7 @@ async function runSyncJob(
     );
     if (linked.matchedCount !== 1) return { succeeded: false };
     await writeShopifyMetafields(shopifyCustomerId, details, options);
-    await writeShopifyStatusTags(shopifyCustomerId, details.status, undefined, options);
+    await writeShopifyStatusTags(shopifyCustomerId, details.status, existingShopifyTags, options);
 
     const latestCustomer = await customers.findOne(
       { _id: customer._id },
@@ -148,7 +161,7 @@ async function runSyncJob(
       { _id: job._id, version: job.version, status: "processing" },
       {
         $set: { status: "synced", syncedAt: new Date(), lastError: "", updatedAt: new Date() },
-        $unset: { leaseUntil: "" },
+        $unset: { leaseUntil: "", repairShopifyLink: "" },
       },
     );
     return { succeeded: syncedJob.matchedCount === 1 };
@@ -307,7 +320,9 @@ export async function retryCustomerShopifySync(customerId: ObjectId): Promise<vo
     { projection: { "shop_details.syncVersion": 1 } },
   );
   if (!customer) throw new Error("Customer account was not found.");
-  await enqueueShopifySync(database, customerId, customer.shop_details.syncVersion);
+  await enqueueShopifySync(database, customerId, customer.shop_details.syncVersion, {
+    repairShopifyLink: true,
+  });
 }
 
 export async function runShopifyWorker(): Promise<{

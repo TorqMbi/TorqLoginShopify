@@ -86,7 +86,7 @@ export async function PATCH(request: Request) {
           database,
           customerId,
           customer.shop_details.syncVersion,
-          clientSession,
+          { session: clientSession },
         );
       });
     } finally {

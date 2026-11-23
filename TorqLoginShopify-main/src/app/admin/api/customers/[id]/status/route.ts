@@ -86,7 +86,7 @@ export async function PATCH(request: Request, context: RouteContext) {
         },
         { session: transaction },
       );
-      await enqueueShopifySync(database, customerId, version, transaction);
+      await enqueueShopifySync(database, customerId, version, { session: transaction });
       updatedStatus = newStatus;
     });
   } catch (error) {

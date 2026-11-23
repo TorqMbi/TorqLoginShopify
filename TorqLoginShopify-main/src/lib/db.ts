@@ -99,6 +99,7 @@ export type ShopifySyncJobDocument = {
   _id: ObjectId;
   customerId: ObjectId;
   version: number;
+  repairShopifyLink?: boolean;
   status: "pending" | "processing" | "failed" | "synced";
   attempts: number;
   nextAttemptAt: Date;

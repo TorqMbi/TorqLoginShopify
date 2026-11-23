@@ -20,12 +20,18 @@ const mocks = vi.hoisted(() => ({
   getShopifyCustomerTags: vi.fn(),
   writeShopifyMetafields: vi.fn(),
   writeShopifyStatusTags: vi.fn(),
+  ShopifyCustomerNotFoundError: class ShopifyCustomerNotFoundError extends Error {
+    constructor() {
+      super("Linked Shopify customer was not found.");
+    }
+  },
 }));
 
 vi.mock("./db", () => ({ getDatabase: mocks.getDatabase }));
 vi.mock("./shopify", () => ({
   ensureShopifyCustomer: mocks.ensureShopifyCustomer,
   getShopifyCustomerTags: mocks.getShopifyCustomerTags,
+  ShopifyCustomerNotFoundError: mocks.ShopifyCustomerNotFoundError,
   writeShopifyMetafields: mocks.writeShopifyMetafields,
   writeShopifyStatusTags: mocks.writeShopifyStatusTags,
 }));
@@ -184,6 +190,45 @@ describe("Shopify outbox worker", () => {
     const requestOptions = mocks.writeShopifyMetafields.mock.calls[0][2];
     expect(requestOptions.deadlineAt).toBeGreaterThan(Date.now());
     expect(requestOptions.deadlineAt).toBeLessThanOrEqual(Date.now() + 20_000);
+  });
+
+  it("recreates a deleted Shopify customer only for an explicit link-repair job", async () => {
+    const replacementId = "gid://shopify/Customer/84";
+    mocks.jobs.findOneAndUpdate.mockResolvedValueOnce({
+      _id: id,
+      customerId: id,
+      version: 4,
+      repairShopifyLink: true,
+      status: "processing",
+      attempts: 1,
+      nextAttemptAt: new Date(),
+      createdAt: new Date(),
+      updatedAt: new Date(),
+    });
+    mocks.getShopifyCustomerTags.mockRejectedValueOnce(
+      new mocks.ShopifyCustomerNotFoundError(),
+    );
+    mocks.ensureShopifyCustomer.mockResolvedValueOnce(replacementId);
+
+    await expect(syncCustomerShopifyNow(id)).resolves.toEqual({
+      state: "synced",
+      lastError: "",
+    });
+
+    expect(mocks.ensureShopifyCustomer).toHaveBeenCalledWith(
+      customer.shop_details.contactMobileNumber,
+      customer.shop_details.contactPersonName,
+      expect.objectContaining({ deadlineAt: expect.any(Number) }),
+    );
+    expect(mocks.customers.updateOne).toHaveBeenCalledWith(
+      { _id: id, "shop_details.syncVersion": 4 },
+      { $set: { shopifyCustomerId: replacementId } },
+    );
+    expect(mocks.writeShopifyMetafields).toHaveBeenCalledWith(
+      replacementId,
+      customer.shop_details,
+      expect.objectContaining({ deadlineAt: expect.any(Number) }),
+    );
   });
 
   it("returns Pending Sync when another worker owns the customer's job", async () => {

@@ -220,6 +220,13 @@ export class ShopifyOperationError extends Error {
   }
 }
 
+export class ShopifyCustomerNotFoundError extends Error {
+  constructor() {
+    super("Linked Shopify customer was not found.");
+    this.name = "ShopifyCustomerNotFoundError";
+  }
+}
+
 type ShopifyTokenCacheDocument = {
   _id: string;
   token?: {
@@ -824,7 +831,7 @@ export async function getShopifyCustomerTags(
   const result = await graphQL<{
     customer: { tags: string[] } | null;
   }>(STATUS_QUERY, { id: customerId }, options);
-  if (!result.customer) throw new Error("Linked Shopify customer was not found.");
+  if (!result.customer) throw new ShopifyCustomerNotFoundError();
   return result.customer.tags;
 }
 

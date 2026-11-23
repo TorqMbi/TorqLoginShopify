@@ -186,6 +186,7 @@ export function CustomerReview({ customerId }: { customerId: string }) {
         {customer.shopifySync.lastError && <p className="message message-error">{customer.shopifySync.lastError}</p>}
         {customer.shopifySync.syncedAt && <p>Last synced {new Date(customer.shopifySync.syncedAt).toLocaleString()}.</p>}
         {customer.shopifySync.attempts > 0 && <p>Attempts: {customer.shopifySync.attempts}</p>}
+        <p>Portal accounts stay in the local database. Retry sync reconnects or recreates a missing Shopify profile.</p>
         <button className="button button-secondary" type="button" disabled={busy} onClick={() => void retrySync()}>Retry sync</button>
       </section>
 

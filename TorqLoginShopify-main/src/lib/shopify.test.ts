@@ -7,6 +7,7 @@ import {
   findShopifyPortalCheckout,
   getActiveShopifyProducts,
   getShopifyCheckoutVariants,
+  getShopifyCustomerTags,
   writeShopifyMetafields,
   writeShopifyStatusTags,
   hasShopifyMetaobjectWriteScope,
@@ -129,6 +130,18 @@ describe("Shopify Admin GraphQL mirror", () => {
       firstName: "Contact Person",
       tags: ["pending-verification"],
     });
+  });
+
+  it("reports a typed missing-customer result when a linked Shopify record was deleted", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({ customer: null }));
+
+    await expect(getShopifyCustomerTags("gid://shopify/Customer/42"))
+      .rejects.toMatchObject({
+        name: "ShopifyCustomerNotFoundError",
+        message: "Linked Shopify customer was not found.",
+      });
   });
 
   it("creates one private customer query metaobject with server-owned fields", async () => {
