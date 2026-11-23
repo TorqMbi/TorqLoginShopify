@@ -14,44 +14,6 @@ export default function ContactPage() {
           <h1>Contact</h1>
           <ContactForm />
         </section>
-<<<<<<< HEAD
-=======
-
-        {/* <footer className="contact-footer">
-          <div className="contact-footer-main">
-            <section className="contact-footer-brand">
-              <div className="contact-footer-brand-title">
-                <span aria-hidden="true">T</span>
-                <strong>TorqBearings</strong>
-              </div>
-              <p>Bearings and industrial spare parts for your business.</p>
-              <small>Operated by Aysha Bearing Industries.</small>
-            </section>
-
-            <section className="contact-footer-details">
-              <h2>Get in touch</h2>
-              <p>Phone: <a href="tel:+923224824413">+92 322 4824413</a></p>
-              <p>Email: Ahmad.Ajam18@hotmail.com</p>
-              <p>Address: 33-B, Street 1, Phase 5, DHA, Lahore, Pakistan.</p>
-            </section>
-
-            <nav className="contact-footer-links" aria-label="Helpful links">
-              <h2>Helpful links</h2>
-              <div>
-                <Link href="/contact">Contact us</Link>
-                <Link href="/shopify-policy/privacy-policy">Privacy Policy</Link>
-                <Link href="/shopify-policy/shipping-policy">Shipping Policy</Link>
-                <Link href="/shopify-policy/refund-policy">Refund Policy</Link>
-                <Link href="/shopify-policy/terms-of-service">Terms &amp; Conditions</Link>
-              </div>
-            </nav>
-          </div>
-          <div className="contact-footer-bottom">
-            <span>© {new Date().getFullYear()} TorqBearings</span>
-            <Link href="/dashboard">Customer account</Link>
-          </div>
-        </footer> */}
->>>>>>> 9d2c110 (remove footer)
       </main>
       <StoreFooter />
     </>

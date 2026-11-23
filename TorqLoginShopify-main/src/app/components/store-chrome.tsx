@@ -1,8 +1,5 @@
-<<<<<<< HEAD
 import Image from "next/image";
 import Link from "next/link";
-=======
->>>>>>> 9d2c110 (remove footer)
 import { getCustomerHeaderCustomer } from "@/lib/customer-header";
 import { CustomerHeader } from "@/app/components/customer-header";
 import type { CustomerHeaderCustomer } from "@/lib/customer-header";
@@ -40,7 +37,6 @@ function FooterIcon({ icon }: { icon: "phone" | "mail" | "pin" }) {
 }
 
 export function StoreFooter() {
-<<<<<<< HEAD
   return (
     <footer className="site-footer">
       <div className="footer-main">
@@ -95,7 +91,4 @@ export function StoreFooter() {
       </div>
     </footer>
   );
-=======
-  return null;
->>>>>>> 9d2c110 (remove footer)
 }
