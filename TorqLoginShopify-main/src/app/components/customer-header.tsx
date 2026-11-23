@@ -1,8 +1,20 @@
 "use client";
 
+import Image from "next/image";
 import Link from "next/link";
+import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import type { CustomerHeaderCustomer } from "@/lib/customer-header";
+
+const STARTS_WITH_LETTER = new RegExp("^\\p{L}", "u");
+
+function initialsOf(name: string) {
+  const words = name.trim().split(/\s+/).filter((word) => STARTS_WITH_LETTER.test(word));
+  if (!words.length) return "";
+  const first = words[0][0];
+  const last = words.length > 1 ? words[words.length - 1][0] : "";
+  return (first + last).toUpperCase();
+}
 
 type Props = {
   customer: CustomerHeaderCustomer;
@@ -117,10 +129,14 @@ function ProfileMenu({ customer }: { customer: CustomerHeaderCustomer }) {
     setError("");
   }
 
+  const initials = customer.status === "pending" || customer.status === "approved"
+    ? initialsOf(customer.name)
+    : "";
+
   return (
     <div className="customer-profile" ref={rootRef}>
       <button
-        className="customer-profile-trigger"
+        className={`customer-profile-trigger${initials ? " has-initials" : ""}`}
         type="button"
         aria-label="Open profile menu"
         aria-haspopup="menu"
@@ -136,10 +152,15 @@ function ProfileMenu({ customer }: { customer: CustomerHeaderCustomer }) {
           }
         }}
       >
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <circle cx="12" cy="8" r="3.2" />
-          <path d="M5.5 20c.6-3.5 2.8-5.3 6.5-5.3s5.9 1.8 6.5 5.3" />
-        </svg>
+        {initials ? (
+          <span className="customer-profile-initials" aria-hidden="true">{initials}</span>
+        ) : (
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <circle cx="12" cy="8" r="3.2" />
+            <path d="M5.5 20c.6-3.5 2.8-5.3 6.5-5.3s5.9 1.8 6.5 5.3" />
+          </svg>
+        )}
+        {customer.status === "pending" && <span className="customer-profile-dot" aria-hidden="true" />}
       </button>
       {open && (
         <div className="customer-profile-menu" id="customer-profile-menu" role="menu" ref={menuRef}>
@@ -200,24 +221,43 @@ export function CustomerHeader({
   cartCount = 0,
   onCartClick,
 }: Props) {
+  const pathname = usePathname() ?? "";
   const hasAccountDetails = customer.status === "no-details" ||
     customer.status === "pending" ||
     customer.status === "approved";
+  const navLinks = [
+    { label: "Home", href: "/", active: pathname === "/" },
+    { label: "Contact", href: "/contact", active: pathname.startsWith("/contact") },
+    ...(hasAccountDetails
+      ? [{ label: "Edit details", href: "/account/details", active: pathname.startsWith("/account/details") }]
+      : []),
+  ];
 
   return (
     <header className="customer-site-header">
       <div className="customer-site-header-inner">
         <Link className="customer-site-brand" href="/" aria-label="TORQ Bearings home">
-          <span>TorqBearings</span>
+          <span className="customer-site-logo">
+            <Image src="/torq-logo-badge.webp" width={44} height={44} alt="" priority unoptimized />
+          </span>
+          <span className="customer-site-wordmark">
+            <strong>TORQ BEARINGS</strong>
+            <small>Industries</small>
+          </span>
         </Link>
         <nav className="customer-site-nav" aria-label="Main navigation">
-          <Link href="/">Home</Link>
-          <Link href="/contact">Contact</Link>
+          {navLinks.map((link) => (
+            <Link
+              key={link.href}
+              href={link.href}
+              className={link.active ? "is-active" : undefined}
+              aria-current={link.active ? "page" : undefined}
+            >
+              {link.label}
+            </Link>
+          ))}
         </nav>
         <div className="customer-site-actions">
-          {hasAccountDetails && (
-            <Link className="customer-header-edit" href="/account/details">Edit details</Link>
-          )}
           <ProfileMenu customer={customer} />
           {customer.status === "approved" && (
             onCartClick ? (
