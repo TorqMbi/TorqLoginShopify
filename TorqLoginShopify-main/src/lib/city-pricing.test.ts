@@ -66,6 +66,8 @@ describe("city prices", () => {
   it("charges the Shopify price for products not in the city's table", () => {
     expect(karachi.legacyAdjustmentPercent).toBe(0);
     expect(cityUnitPrice(12000, VARIANT_A, karachi)).toBe(12000);
+    const saved = toCityPricing({ name: "Karachi", adjustmentPercent: 0, overrides: [] });
+    expect(cityUnitPrice(12000, VARIANT_A, saved)).toBe(12000);
   });
 
   it("keeps an old list's % on products without a table price until the list is saved again", () => {

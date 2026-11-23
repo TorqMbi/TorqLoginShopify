@@ -63,14 +63,14 @@ describe("admin city pricing API", () => {
     const response = await POST(request("POST", { name: "  karachi ", adjustmentPercent: 5 }));
 
     expect(response.status).toBe(201);
-    const created = mocks.insertOne.mock.calls[0][0];
-    expect(created).toEqual(expect.objectContaining({
+    // A % sent by an old screen is ignored; 0 is stored for older app versions.
+    expect(mocks.insertOne).toHaveBeenCalledWith(expect.objectContaining({
       name: "karachi",
       nameKey: "karachi",
+      adjustmentPercent: 0,
       overrides: [],
       updatedBy: "owner",
     }));
-    expect(created).not.toHaveProperty("adjustmentPercent");
   });
 
   it("rejects bad city names and duplicate cities", async () => {
@@ -81,16 +81,16 @@ describe("admin city pricing API", () => {
     await expect(duplicate.json()).resolves.toEqual({ error: "Karachi already has a price list." });
   });
 
-  it("saves the city's price table and drops any old % adjustment", async () => {
+  it("saves the city's price table and sets any old % adjustment to 0", async () => {
     const overrides = [{ variantId: "gid://shopify/ProductVariant/2", price: 14800 }];
     const response = await PATCH(request("PATCH", { adjustmentPercent: -3, overrides }), context);
 
     expect(response.status).toBe(200);
-    const [filter, update] = mocks.findOneAndUpdate.mock.calls[0];
-    expect(filter).toEqual({ _id: new ObjectId(cityId) });
-    expect(update.$set).toEqual(expect.objectContaining({ overrides, updatedBy: "owner" }));
-    expect(update.$set).not.toHaveProperty("adjustmentPercent");
-    expect(update.$unset).toEqual({ adjustmentPercent: "" });
+    expect(mocks.findOneAndUpdate).toHaveBeenCalledWith(
+      { _id: new ObjectId(cityId) },
+      { $set: expect.objectContaining({ adjustmentPercent: 0, overrides, updatedBy: "owner" }) },
+      expect.anything(),
+    );
   });
 
   it("rejects exact prices that are zero, negative or for unknown products", async () => {

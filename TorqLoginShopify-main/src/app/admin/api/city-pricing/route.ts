@@ -49,6 +49,8 @@ export async function POST(request: Request) {
     await (await getDatabase()).collection<CityPriceDocument>(CITY_PRICES_COLLECTION).insertOne({
       name,
       nameKey: cityKey(name),
+      // Always 0 now; stored so older versions of the app still read it.
+      adjustmentPercent: 0,
       overrides: [],
       createdAt: now,
       updatedAt: now,

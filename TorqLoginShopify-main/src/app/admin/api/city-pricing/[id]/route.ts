@@ -38,17 +38,18 @@ export async function PATCH(request: Request, context: RouteContext) {
   }
 
   try {
-    // Saving replaces the whole table and drops any old % adjustment, so the
-    // city's prices are exactly what staff saw in the table.
+    // Saving replaces the whole table and sets any old % adjustment to 0, so
+    // the city's prices are exactly what staff saw in the table. The 0 stays
+    // stored (not removed) so older versions of the app still read the list.
     const result = await (await getDatabase()).collection<CityPriceDocument>(CITY_PRICES_COLLECTION).findOneAndUpdate(
       { _id: new ObjectId(id) },
       {
         $set: {
+          adjustmentPercent: 0,
           overrides,
           updatedAt: new Date(),
           updatedBy: authorization.staff!.username,
         },
-        $unset: { adjustmentPercent: "" },
       },
       { returnDocument: "after", projection: { name: 1 } },
     );

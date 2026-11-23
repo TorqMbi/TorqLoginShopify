@@ -31,8 +31,9 @@ export type CustomerDocument = {
 
 // A city's price table, set by admins in the portal. Customers whose shop city
 // matches `nameKey` pay these prices; other products and cities use the
-// Shopify price. `adjustmentPercent` only exists on lists saved before the %
-// was removed, and is dropped the next time the list is saved.
+// Shopify price. `adjustmentPercent` is 0 on lists created or saved since the
+// % was removed; an older list can still hold a % until it is saved again.
+// It stays stored as 0 so older versions of the app still read the list.
 export type CityPriceDocument = {
   name: string;
   nameKey: string;
