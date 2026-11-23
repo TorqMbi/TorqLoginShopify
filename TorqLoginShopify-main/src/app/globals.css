@@ -576,13 +576,59 @@ body {
   overflow: hidden;
   background: #eceff4;
 }
-.landing-hero img {
+.landing-hero-track {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  width: 400%;
+  transition: transform 1200ms ease-in-out;
+  will-change: transform;
+}
+.landing-hero-track.is-instant {
+  transition: none;
+}
+.landing-hero-slide {
+  position: relative;
+  width: 25%;
+  height: 100%;
+  flex: 0 0 25%;
+  background: #eceff4;
+}
+.landing-hero-slide img {
   left: 50% !important;
   right: auto !important;
   width: min(100%, 600px) !important;
   height: 100% !important;
   transform: translateX(-50%);
   object-fit: contain;
+}
+.landing-carousel-dots {
+  position: absolute;
+  left: 50%;
+  bottom: 10px;
+  z-index: 2;
+  display: flex;
+  gap: 7px;
+  transform: translateX(-50%);
+}
+.landing-carousel-dots button {
+  width: 8px;
+  height: 8px;
+  padding: 0;
+  border: 1px solid rgba(18, 21, 26, .55);
+  border-radius: 50%;
+  background: rgba(255, 255, 255, .78);
+  cursor: pointer;
+  transition: width 180ms ease, border-radius 180ms ease, background 180ms ease;
+}
+.landing-carousel-dots button.active {
+  width: 22px;
+  border-radius: 999px;
+  background: #20c56b;
+  border-color: #20c56b;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-hero-track { transition: none; }
 }
 .landing-content {
   width: min(100% - 32px, 880px);
