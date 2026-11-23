@@ -814,10 +814,8 @@ body {
   transition: width 180ms ease, border-radius 180ms ease, background 180ms ease;
 }
 .landing-carousel-dots button.active {
-  width: 22px;
-  border-radius: 999px;
-  background: #20c56b;
-  border-color: #20c56b;
+  background: #111417;
+  border-color: #111417;
 }
 @media (prefers-reduced-motion: reduce) {
   .landing-hero-track { transition: none; }
