@@ -4,6 +4,9 @@ import { ObjectId } from "mongodb";
 import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
 import { getSession } from "@/lib/auth";
 import { getDatabase, type CustomerDocument } from "@/lib/db";
+import { AccountStatusSync } from "@/app/components/account-status-sync";
+
+export const dynamic = "force-dynamic";
 
 const statusMessage = {
   pending: "Your account is under review. Store access will be available once the review is complete.",
@@ -38,6 +41,10 @@ export default async function CustomerDashboard() {
         status,
         name: customer.shop_details.contactPersonName?.trim() || customer.username,
       }} />
+      <AccountStatusSync
+        initialStatus={status}
+        initialSyncVersion={customer.shop_details.syncVersion}
+      />
       <main className="app-page">
         <section className="content-wrap">
           <div className="page-heading"><h1>Your account</h1><p>Your TORQ Bearings account status.</p></div>

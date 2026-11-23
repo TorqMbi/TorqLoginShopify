@@ -5,6 +5,7 @@ import { applyCityPricing, getCustomerCityPricing } from "@/lib/city-pricing";
 import { getActiveShopifyProducts, type ShopifyStoreProduct } from "@/lib/shopify";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getStoreAccess } from "@/lib/store-access";
+import { AccountStatusSync } from "@/app/components/account-status-sync";
 
 export const dynamic = "force-dynamic";
 
@@ -27,5 +28,10 @@ export default async function StorePage() {
     console.error("Approved store page product request failed.");
   }
 
-  return <Storefront products={products} customer={customer} />;
+  return (
+    <>
+      <AccountStatusSync initialStatus="approved" />
+      <Storefront products={products} customer={customer} />
+    </>
+  );
 }
