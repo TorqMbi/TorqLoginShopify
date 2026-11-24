@@ -10,13 +10,15 @@ export async function StoreHeader({
   customer,
   hideHome = false,
   hideContact = false,
+  hideEditDetails = false,
 }: {
   customer?: CustomerHeaderCustomer;
   hideHome?: boolean;
   hideContact?: boolean;
+  hideEditDetails?: boolean;
 } = {}) {
   const headerCustomer = customer ?? await getCustomerHeaderCustomer();
-  return <CustomerHeader customer={headerCustomer} hideHome={hideHome} hideContact={hideContact} />;
+  return <CustomerHeader customer={headerCustomer} hideHome={hideHome} hideContact={hideContact} hideEditDetails={hideEditDetails} />;
 }
 
 const footerLinks = [

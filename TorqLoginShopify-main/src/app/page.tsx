@@ -29,7 +29,7 @@ export default async function HomePage() {
 
   return (
     <div className="landing-home-shell">
-      <StoreHeader customer={customer} hideHome hideContact />
+      <StoreHeader customer={customer} hideHome hideContact hideEditDetails />
       <main className="landing-page landing-home-page">
         <BearingCarousel />
 

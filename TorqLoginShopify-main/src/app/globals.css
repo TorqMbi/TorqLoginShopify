@@ -1030,6 +1030,28 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 .city-unsaved { color: #f1d27b; font-size: 12px; }
 
 @media (max-width: 760px) {
+  .landing-home-shell {
+    height: auto;
+    min-height: 100dvh;
+    flex-basis: auto;
+    overflow: visible;
+  }
+  html:has(.landing-home-shell), body:has(.landing-home-shell) {
+    height: auto;
+    min-height: 100%;
+    overflow-y: auto;
+  }
+  .landing-home-page {
+    min-height: auto;
+    flex: 1 0 auto;
+    overflow: visible;
+  }
+  .landing-home-page .landing-content {
+    min-height: auto;
+    flex: 0 0 auto;
+    overflow: visible;
+    padding-bottom: 20px;
+  }
   .customer-site-header-inner { min-height: 0; padding: 0 16px; flex-wrap: wrap; gap: 0 12px; }
   .customer-site-brand { order: 1; min-height: 60px; gap: 10px; }
   .customer-site-logo { width: 40px; height: 40px; flex-basis: 40px; }

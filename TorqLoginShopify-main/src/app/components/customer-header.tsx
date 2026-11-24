@@ -22,6 +22,7 @@ type Props = {
   onCartClick?: () => void;
   hideHome?: boolean;
   hideContact?: boolean;
+  hideEditDetails?: boolean;
 };
 
 type MenuItem = {
@@ -224,6 +225,7 @@ export function CustomerHeader({
   onCartClick,
   hideHome = false,
   hideContact = false,
+  hideEditDetails = false,
 }: Props) {
   const pathname = usePathname() ?? "";
   const hasAccountDetails = customer.status === "no-details" ||
@@ -234,7 +236,7 @@ export function CustomerHeader({
     ...(!hideContact
       ? [{ label: "Contact", href: "/contact", active: pathname.startsWith("/contact") }]
       : []),
-    ...(hasAccountDetails
+    ...(hasAccountDetails && !hideEditDetails
       ? [{ label: "Edit details", href: "/account/details", active: pathname.startsWith("/account/details") }]
       : []),
   ];
