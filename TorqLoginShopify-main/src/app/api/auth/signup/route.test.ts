@@ -5,7 +5,7 @@ const mocks = vi.hoisted(() => ({
   insertOne: vi.fn(),
   getDatabase: vi.fn(),
   createSession: vi.fn(),
-  findCityPricing: vi.fn(),
+  findListedCityName: vi.fn(),
 }));
 
 vi.mock("bcryptjs", () => ({ default: { hash: mocks.hash } }));
@@ -14,7 +14,7 @@ vi.mock("@/lib/db", () => ({
   isDatabaseConfigured: () => true,
 }));
 vi.mock("@/lib/auth", () => ({ createSession: mocks.createSession }));
-vi.mock("@/lib/city-pricing", () => ({ findCityPricing: mocks.findCityPricing }));
+vi.mock("@/lib/city-pricing", () => ({ findListedCityName: mocks.findListedCityName }));
 vi.mock("@/lib/http", () => ({
   isSameOrigin: () => true,
   badOrigin: () => new Response(null, { status: 403 }),
@@ -28,7 +28,7 @@ describe("customer signup", () => {
     mocks.hash.mockReset().mockResolvedValue("hashed-password");
     mocks.insertOne.mockReset().mockResolvedValue({ insertedId: { toString: () => "new-customer-id" } });
     mocks.createSession.mockReset().mockResolvedValue(undefined);
-    mocks.findCityPricing.mockReset().mockResolvedValue(null);
+    mocks.findListedCityName.mockReset().mockResolvedValue(null);
     mocks.getDatabase.mockReset().mockResolvedValue({
       collection: () => ({ insertOne: mocks.insertOne }),
     });
@@ -90,8 +90,8 @@ describe("customer signup", () => {
     expect(mocks.createSession).not.toHaveBeenCalled();
   });
 
-  it("stores a priced city using its configured spelling", async () => {
-    mocks.findCityPricing.mockResolvedValue({ name: "Karachi" });
+  it("stores a city from the City-wise Pricing Matrix under its listed spelling", async () => {
+    mocks.findListedCityName.mockResolvedValue("Karachi");
     const response = await POST(new Request("https://torq.example/api/auth/signup", {
       method: "POST",
       headers: { "content-type": "application/json", origin: "https://torq.example" },
@@ -99,7 +99,7 @@ describe("customer signup", () => {
     }));
 
     expect(response.status).toBe(201);
-    expect(mocks.findCityPricing).toHaveBeenCalledWith(expect.anything(), "karachi");
+    expect(mocks.findListedCityName).toHaveBeenCalledWith("karachi");
     expect(mocks.insertOne.mock.calls[0][0].shop_details.city).toBe("Karachi");
   });
 });

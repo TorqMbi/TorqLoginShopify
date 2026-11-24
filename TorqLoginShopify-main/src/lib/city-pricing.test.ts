@@ -1,149 +1,205 @@
 import { ObjectId, type Db } from "mongodb";
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const mocks = vi.hoisted(() => ({ getShopifyCityPricingMatrix: vi.fn() }));
+const shopifyDown = async () => {
+  throw new Error("Shopify down");
+};
 vi.mock("@/lib/db", () => ({ getDatabase: vi.fn() }));
+vi.mock("@/lib/shopify", () => ({ getShopifyCityPricingMatrix: mocks.getShopifyCityPricingMatrix }));
 
 import {
   CITY_LOCKED_MESSAGE,
+  CityPricingUnavailableError,
   applyCityPricing,
+  cityChoices,
   cityKey,
+  cityPricingFor,
   cityUnitPrice,
-  cleanCityName,
-  parsePriceOverrides,
+  describeCityPrices,
+  findListedCityName,
+  parseCityPricingMatrix,
   resolveDetailsCity,
-  toCityPricing,
+  type CityPricingMatrix,
 } from "./city-pricing";
 import type { ShopifyStoreProduct } from "./shopify";
 
-const VARIANT_A = "gid://shopify/ProductVariant/1";
-const VARIANT_B = "gid://shopify/ProductVariant/2";
+// The shape TORQ City Pricing saves in the shop metafield torq.city_pricing.
+const SAVED_MATRIX = JSON.stringify({
+  useDefaultPrices: false,
+  baseCity: "Lahore",
+  groups: [],
+  cities: [
+    { name: "Lahore", province: "Punjab", group: "", adjustment: 10 },
+    { name: "Faisalabad", province: "Punjab", group: "", adjustment: 10 },
+    { name: "Multan", province: "Punjab", group: "", adjustment: 0 },
+    { name: "Karachi", province: "Sindh", group: "Coast", adjustment: -3 },
+  ],
+});
 
-describe("city names and admin input", () => {
-  it("matches cities regardless of case and extra spaces", () => {
-    expect(cityKey("  Dera   Ghazi Khan ")).toBe("dera ghazi khan");
-    expect(cityKey(undefined)).toBe("");
+function matrix(overrides: Partial<CityPricingMatrix> = {}): CityPricingMatrix {
+  return { ...parseCityPricingMatrix(SAVED_MATRIX)!, ...overrides };
+}
+
+describe("reading the City-wise Pricing Matrix", () => {
+  it("reads the matrix TORQ City Pricing saves", () => {
+    const parsed = parseCityPricingMatrix(SAVED_MATRIX, "2026-11-24T10:14:02Z");
+    expect(parsed).toMatchObject({ useDefaultPrices: false, baseCity: "Lahore", updatedAt: "2026-11-24T10:14:02Z" });
+    expect(parsed!.cities[0]).toEqual({ name: "Lahore", province: "Punjab", group: "", adjustmentPercent: 10 });
+    expect(parsed!.cities).toHaveLength(4);
   });
 
-  it("accepts real city names and rejects anything else", () => {
-    expect(cleanCityName("  Karachi ")).toBe("Karachi");
-    expect(cleanCityName("D.I. Khan")).toBe("D.I. Khan");
-    expect(cleanCityName("Mandi Bahauddin")).toBe("Mandi Bahauddin");
-    expect(cleanCityName("K")).toBeNull();
-    expect(cleanCityName("<script>")).toBeNull();
-    expect(cleanCityName("1 Lahore")).toBeNull();
-    expect(cleanCityName("A".repeat(31))).toBeNull();
+  it("treats a matrix that was never saved as no city prices", () => {
+    expect(parseCityPricingMatrix(null)).toBeNull();
+    expect(parseCityPricingMatrix(undefined)).toBeNull();
+    expect(parseCityPricingMatrix("  ")).toBeNull();
   });
 
-  it("accepts only positive exact prices for real product variants, once each", () => {
-    expect(parsePriceOverrides([{ variantId: VARIANT_A, price: 14800 }])).toEqual([
-      { variantId: VARIANT_A, price: 14800 },
+  it("tidies names, defaults a missing % to 0 and keeps the first of a duplicate city", () => {
+    const parsed = parseCityPricingMatrix(JSON.stringify({
+      cities: [
+        { name: "  Dera   Ghazi Khan ", province: "Punjab" },
+        { name: "lahore", adjustment: 5 },
+        { name: "Lahore", adjustment: 50 },
+      ],
+    }));
+    expect(parsed!.cities).toEqual([
+      { name: "Dera Ghazi Khan", province: "Punjab", group: "", adjustmentPercent: 0 },
+      { name: "lahore", province: "", group: "", adjustmentPercent: 5 },
     ]);
-    expect(parsePriceOverrides([])).toEqual([]);
-    expect(parsePriceOverrides([{ variantId: VARIANT_A, price: 0 }])).toBeNull();
-    expect(parsePriceOverrides([{ variantId: "not-a-variant", price: 10 }])).toBeNull();
-    expect(parsePriceOverrides([
-      { variantId: VARIANT_A, price: 10 },
-      { variantId: VARIANT_A, price: 11 },
-    ])).toBeNull();
-    expect(parsePriceOverrides("nope")).toBeNull();
+    expect(parsed!.useDefaultPrices).toBe(false);
+  });
+
+  it("refuses a broken matrix instead of guessing prices", () => {
+    for (const value of [
+      "{not json",
+      "[]",
+      JSON.stringify({ cities: "Lahore" }),
+      JSON.stringify({ useDefaultPrices: "yes", cities: [] }),
+      JSON.stringify({ cities: [{ name: "", adjustment: 10 }] }),
+      JSON.stringify({ cities: [{ name: "Lahore", adjustment: "10" }] }),
+      JSON.stringify({ cities: [{ name: "Lahore", adjustment: -100 }] }),
+      JSON.stringify({ cities: [{ name: "Lahore", adjustment: 1001 }] }),
+    ]) {
+      expect(() => parseCityPricingMatrix(value), value).toThrow(CityPricingUnavailableError);
+    }
   });
 });
 
 describe("city prices", () => {
-  const karachi = toCityPricing({
-    name: "Karachi",
-    overrides: [{ variantId: VARIANT_B, price: 14800 }],
+  it("matches a shop's city regardless of case and extra spaces", () => {
+    expect(cityKey("  Dera   Ghazi Khan ")).toBe("dera ghazi khan");
+    expect(cityPricingFor(matrix(), " lahore ")).toEqual({ name: "Lahore", adjustmentPercent: 10 });
   });
 
-  it("keeps the Shopify price when the city has no price list", () => {
-    expect(cityUnitPrice(12000, VARIANT_A, null)).toBe(12000);
+  it("charges the Shopify price for unlisted cities, 0% cities and when default prices are on", () => {
+    expect(cityPricingFor(matrix(), "Okara")).toBeNull();
+    expect(cityPricingFor(matrix(), "Multan")).toBeNull();
+    expect(cityPricingFor(matrix(), "")).toBeNull();
+    expect(cityPricingFor(null, "Lahore")).toBeNull();
+    expect(cityPricingFor(matrix({ useDefaultPrices: true }), "Lahore")).toBeNull();
   });
 
-  it("charges the price in the city's table", () => {
-    expect(cityUnitPrice(15000, VARIANT_B, karachi)).toBe(14800);
-  });
-
-  it("charges the Shopify price for products not in the city's table", () => {
-    expect(karachi.legacyAdjustmentPercent).toBe(0);
-    expect(cityUnitPrice(12000, VARIANT_A, karachi)).toBe(12000);
-    const saved = toCityPricing({ name: "Karachi", adjustmentPercent: 0, overrides: [] });
-    expect(cityUnitPrice(12000, VARIANT_A, saved)).toBe(12000);
-  });
-
-  it("keeps an old list's % on products without a table price until the list is saved again", () => {
-    const old = toCityPricing({
-      name: "Karachi",
-      adjustmentPercent: 5,
-      overrides: [{ variantId: VARIANT_B, price: 14800 }],
-    });
-    expect(cityUnitPrice(12000, VARIANT_A, old)).toBe(12600);
-    expect(cityUnitPrice(9999, VARIANT_A, old)).toBe(10499);
-    expect(cityUnitPrice(15000, VARIANT_B, old)).toBe(14800);
-    const discount = toCityPricing({ name: "Multan", adjustmentPercent: -3, overrides: [] });
-    expect(cityUnitPrice(9500, VARIANT_A, discount)).toBe(9215);
+  it("adds the city % to the Shopify price, rounded to the nearest rupee", () => {
+    expect(cityUnitPrice(12000, { name: "Lahore", adjustmentPercent: 10 })).toBe(13200);
+    expect(cityUnitPrice(9999, { name: "Lahore", adjustmentPercent: 5 })).toBe(10499);
+    expect(cityUnitPrice(9500, { name: "Karachi", adjustmentPercent: -3 })).toBe(9215);
+    expect(cityUnitPrice(12000, null)).toBe(12000);
   });
 
   it("updates carton and piece prices on the product list", () => {
     const products = [
-      { variantId: VARIANT_A, cartonPrice: 12000, piecesPerCarton: 100, pricePerPiece: 120 },
-      { variantId: VARIANT_B, cartonPrice: 15000, piecesPerCarton: 100, pricePerPiece: 150 },
-      { variantId: "gid://shopify/ProductVariant/3", cartonPrice: null, piecesPerCarton: 10, pricePerPiece: null },
+      { variantId: "a", cartonPrice: 12000, piecesPerCarton: 100, pricePerPiece: 120 },
+      { variantId: "b", cartonPrice: 15000, piecesPerCarton: null, pricePerPiece: null },
+      { variantId: "c", cartonPrice: null, piecesPerCarton: 10, pricePerPiece: null },
     ] as ShopifyStoreProduct[];
 
-    expect(applyCityPricing(products, karachi).map((product) => [product.cartonPrice, product.pricePerPiece]))
-      .toEqual([[12000, 120], [14800, 148], [null, null]]);
+    expect(applyCityPricing(products, { name: "Lahore", adjustmentPercent: 10 })
+      .map((product) => [product.cartonPrice, product.pricePerPiece]))
+      .toEqual([[13200, 132], [16500, null], [null, null]]);
     expect(applyCityPricing(products, null)).toBe(products);
+  });
+
+  it("lists the matrix cities by province for the city picker", () => {
+    expect(cityChoices(matrix())).toEqual([
+      { province: "Punjab", cities: ["Lahore", "Faisalabad", "Multan"] },
+      { province: "Sindh", cities: ["Karachi"] },
+    ]);
+    expect(cityChoices(null)).toEqual([]);
+  });
+});
+
+describe("city spelling and the staff summary", () => {
+  beforeEach(() => {
+    mocks.getShopifyCityPricingMatrix.mockReset().mockResolvedValue(matrix());
+  });
+
+  it("returns the matrix spelling of a listed city", async () => {
+    await expect(findListedCityName("karachi ")).resolves.toBe("Karachi");
+    await expect(findListedCityName("Okara")).resolves.toBeNull();
+    mocks.getShopifyCityPricingMatrix.mockImplementation(shopifyDown);
+    await expect(findListedCityName("karachi")).resolves.toBeNull();
+  });
+
+  it("tells staff what a shop pays", async () => {
+    await expect(describeCityPrices("lahore")).resolves.toBe("Lahore: Shopify prices +10% (City-wise Pricing Matrix)");
+    await expect(describeCityPrices("Karachi")).resolves.toBe("Karachi: Shopify prices -3% (City-wise Pricing Matrix)");
+    await expect(describeCityPrices("Okara")).resolves.toBe("Shopify prices (this city isn't in the City-wise Pricing Matrix)");
+    mocks.getShopifyCityPricingMatrix.mockResolvedValue(matrix({ useDefaultPrices: true }));
+    await expect(describeCityPrices("Lahore")).resolves.toContain("Use default prices");
+    mocks.getShopifyCityPricingMatrix.mockImplementation(shopifyDown);
+    await expect(describeCityPrices("Lahore")).resolves.toBe("Couldn't load city prices from Shopify right now");
   });
 });
 
 describe("changing city on the shop details form", () => {
-  const karachiId = new ObjectId();
-  const lahoreId = new ObjectId();
-  const priceLists = [
-    { _id: karachiId, name: "Karachi", nameKey: "karachi" },
-    { _id: lahoreId, name: "Lahore", nameKey: "lahore" },
-  ];
+  const customerId = new ObjectId();
 
   function databaseFor(customer: { status: string; city?: string } | null) {
-    const collection = (name: string) => ({
-      findOne: async (filter: { nameKey?: string }) => {
-        if (name === "customers") {
-          return customer ? { shop_details: { status: customer.status, city: customer.city } } : null;
-        }
-        return priceLists.find((list) => list.nameKey === filter.nameKey) ?? null;
-      },
+    const collection = () => ({
+      findOne: async () => customer ? { shop_details: { status: customer.status, city: customer.city } } : null,
     });
     return { collection } as unknown as Db;
   }
 
-  const customerId = new ObjectId();
+  beforeEach(() => {
+    mocks.getShopifyCityPricingMatrix.mockReset().mockResolvedValue(matrix());
+  });
 
-  it("saves a priced city under its listed spelling", async () => {
+  it("saves a listed city under the matrix spelling", async () => {
     await expect(resolveDetailsCity(databaseFor({ status: "pending" }), customerId, "karachi"))
       .resolves.toEqual({ city: "Karachi" });
   });
 
   it("lets shops awaiting approval pick any city", async () => {
-    await expect(resolveDetailsCity(databaseFor({ status: "pending", city: "Karachi" }), customerId, "Lahore"))
-      .resolves.toEqual({ city: "Lahore" });
-    await expect(resolveDetailsCity(databaseFor({ status: "blocked", city: "Karachi" }), customerId, "Okara"))
+    await expect(resolveDetailsCity(databaseFor({ status: "pending", city: "Lahore" }), customerId, "Okara"))
       .resolves.toEqual({ city: "Okara" });
   });
 
-  it("stops approved shops moving to a different price list", async () => {
-    const approvedInKarachi = databaseFor({ status: "approved", city: "Karachi" });
-    await expect(resolveDetailsCity(approvedInKarachi, customerId, "Lahore"))
-      .resolves.toEqual({ error: CITY_LOCKED_MESSAGE });
-    await expect(resolveDetailsCity(approvedInKarachi, customerId, "Okara"))
+  it("stops approved shops moving to a city with a different %", async () => {
+    await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "Lahore" }), customerId, "Multan"))
       .resolves.toEqual({ error: CITY_LOCKED_MESSAGE });
     await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "Okara" }), customerId, "Lahore"))
       .resolves.toEqual({ error: CITY_LOCKED_MESSAGE });
   });
 
-  it("lets approved shops fix spelling when their prices stay the same", async () => {
-    await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "karachi " }), customerId, "Karachi"))
-      .resolves.toEqual({ city: "Karachi" });
-    await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "Okara" }), customerId, "Sahiwal"))
-      .resolves.toEqual({ city: "Sahiwal" });
+  it("lets approved shops move between cities with the same % or fix spelling", async () => {
+    await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "Lahore" }), customerId, "faisalabad"))
+      .resolves.toEqual({ city: "Faisalabad" });
+    await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "Multan" }), customerId, "Okara"))
+      .resolves.toEqual({ city: "Okara" });
+    await expect(resolveDetailsCity(databaseFor({ status: "approved", city: "lahore " }), customerId, "Lahore"))
+      .resolves.toEqual({ city: "Lahore" });
+  });
+
+  it("doesn't let an approved shop change city while Shopify can't be checked", async () => {
+    mocks.getShopifyCityPricingMatrix.mockImplementation(shopifyDown);
+    const approved = databaseFor({ status: "approved", city: "Lahore" });
+    await expect(resolveDetailsCity(approved, customerId, "Lahore")).resolves.toEqual({ city: "Lahore" });
+    await expect(resolveDetailsCity(approved, customerId, "Multan")).resolves.toEqual({
+      error: expect.stringContaining("couldn't change your city"),
+    });
+    await expect(resolveDetailsCity(databaseFor({ status: "pending" }), customerId, "Multan"))
+      .resolves.toEqual({ city: "Multan" });
   });
 });

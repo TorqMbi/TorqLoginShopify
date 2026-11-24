@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CustomerHeader } from "@/app/components/customer-header";
 import type { CustomerHeaderCustomer } from "@/lib/customer-header";
@@ -46,6 +47,7 @@ function WhatsAppIcon() {
 }
 
 export function Storefront({ products, customer }: Props) {
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [quantities, setQuantities] = useState<Record<string, number>>({});
   const [cartReady, setCartReady] = useState(false);
@@ -184,12 +186,19 @@ export function Storefront({ products, customer }: Props) {
             variantId: product.variantId,
             quantity,
           })),
+          // Only compared on the server, so a price change is shown first.
+          expectedTotal: totalAmount,
         }),
       });
       const result = await response.json() as {
         error?: string;
+        code?: string;
         order?: OrderConfirmation;
       };
+      if (result.code === "PRICES_CHANGED") {
+        // Reload current prices; the cart keeps its items for the customer to re-check.
+        router.refresh();
+      }
       if (!response.ok || !result.order) {
         throw new Error(result.error ?? "The order could not be confirmed. Your cart is safe.");
       }

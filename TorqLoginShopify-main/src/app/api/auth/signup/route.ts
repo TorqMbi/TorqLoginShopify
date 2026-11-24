@@ -3,7 +3,7 @@ import bcrypt from "bcryptjs";
 import { MongoServerError } from "mongodb";
 import { getDatabase, isDatabaseConfigured, type CustomerDocument } from "@/lib/db";
 import { createSession } from "@/lib/auth";
-import { findCityPricing } from "@/lib/city-pricing";
+import { findListedCityName } from "@/lib/city-pricing";
 import { parseCustomerShopDetails } from "@/lib/customer-shop-details";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
 import { isValidPassword, isValidUsername, normalizeMobile } from "@/lib/validation";
@@ -41,7 +41,7 @@ export async function POST(request: Request) {
   try {
     const passwordHash = await bcrypt.hash(body.password, 12);
     const database = await getDatabase();
-    const cityPricing = await findCityPricing(database, parsedDetails.details.city);
+    const listedCity = await findListedCityName(parsedDetails.details.city);
     const now = new Date();
     const result = await database.collection<CustomerDocument>("customers").insertOne({
       mobileNumber,
@@ -50,7 +50,7 @@ export async function POST(request: Request) {
       passwordHash,
       shop_details: {
         ...parsedDetails.details,
-        city: cityPricing?.name ?? parsedDetails.details.city,
+        city: listedCity ?? parsedDetails.details.city,
         status: "pending",
         completedAt: now,
         updatedAt: now,

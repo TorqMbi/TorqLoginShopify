@@ -5,8 +5,9 @@ import {
   createShopifyPortalDraftOrder,
   ensureShopifyCustomer,
   findShopifyPortalCheckout,
-  getActiveShopifyProducts,
+  getActiveShopifyCatalog,
   getShopifyCheckoutVariants,
+  getShopifyCityPricingMatrix,
   getShopifyCustomerTags,
   writeShopifyMetafields,
   writeShopifyStatusTags,
@@ -400,7 +401,7 @@ describe("Shopify Admin GraphQL mirror", () => {
         },
       }));
 
-    await expect(getActiveShopifyProducts()).resolves.toEqual([
+    await expect(getActiveShopifyCatalog()).resolves.toEqual({ cityPricing: null, products: [
       {
         id: "gid://shopify/Product/1",
         variantId: "gid://shopify/ProductVariant/10",
@@ -427,9 +428,10 @@ describe("Shopify Admin GraphQL mirror", () => {
         piecesPerCarton: null,
         inventoryCartons: 0,
       },
-    ]);
+    ] });
     const requestBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
     expect(requestBody.query).toContain('query: "status:active"');
+    expect(requestBody.query).toContain('metafield(namespace: "torq", key: "city_pricing")');
     expect(requestBody.query).toContain("shop {\n    currencyCode");
     expect(requestBody.query).toContain("          price\n");
     expect(requestBody.query).not.toContain("price { amount currencyCode }");
@@ -455,6 +457,7 @@ describe("Shopify Admin GraphQL mirror", () => {
 
     await expect(getShopifyCheckoutVariants(["gid://shopify/ProductVariant/42"])).resolves.toEqual({
       currencyCode: "PKR",
+      cityPricing: null,
       variants: [{
         variantId: "gid://shopify/ProductVariant/42",
         title: "6302-2RS",
@@ -468,6 +471,43 @@ describe("Shopify Admin GraphQL mirror", () => {
     expect(requestBody.variables).toEqual({ ids: ["gid://shopify/ProductVariant/42"] });
     expect(requestBody.query).toContain("inventoryQuantity");
     expect(requestBody.query).toContain("availableForSale");
+    expect(requestBody.query).toContain('metafield(namespace: "torq", key: "city_pricing")');
+  });
+
+  it("reads the City-wise Pricing Matrix in the same request as checkout prices", async () => {
+    const matrix = {
+      useDefaultPrices: false,
+      baseCity: "Lahore",
+      groups: [],
+      cities: [{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }],
+    };
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        shop: {
+          currencyCode: "PKR",
+          cityPricing: { value: JSON.stringify(matrix), updatedAt: "2026-11-24T10:14:02Z" },
+        },
+        nodes: [],
+      }));
+
+    const result = await getShopifyCheckoutVariants(["gid://shopify/ProductVariant/42"]);
+    expect(result.cityPricing).toEqual({
+      useDefaultPrices: false,
+      baseCity: "Lahore",
+      updatedAt: "2026-11-24T10:14:02Z",
+      cities: [{ name: "Lahore", province: "Punjab", group: "", adjustmentPercent: 10 }],
+    });
+  });
+
+  it("refuses an unreadable City-wise Pricing Matrix instead of guessing prices", async () => {
+    vi.mocked(fetch)
+      .mockResolvedValueOnce(oauthResponse())
+      .mockResolvedValueOnce(graphQLResponse({
+        shop: { cityPricing: { value: "{not json", updatedAt: null } },
+      }));
+
+    await expect(getShopifyCityPricingMatrix()).rejects.toThrow("City pricing matrix is unreadable");
   });
 
   it("creates a tagged customer draft order with the portal checkout key and shipping address", async () => {
@@ -549,6 +589,7 @@ describe("Shopify Admin GraphQL mirror", () => {
         { variantId: "gid://shopify/ProductVariant/43", quantity: 1, unitPrice: 999.5 },
       ],
       priceCity: "Karachi",
+      priceAdjustmentPercent: 10,
     });
 
     const requestBody = JSON.parse(String(vi.mocked(fetch).mock.calls[1][1]?.body));
@@ -569,6 +610,7 @@ describe("Shopify Admin GraphQL mirror", () => {
       customAttributes: [
         { key: "torq_checkout_key", value: "11111111-1111-4111-8111-111111111111" },
         { key: "torq_price_city", value: "Karachi" },
+        { key: "torq_price_adjustment", value: "+10%" },
       ],
     });
   });

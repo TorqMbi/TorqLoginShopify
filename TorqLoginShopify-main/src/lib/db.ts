@@ -31,21 +31,6 @@ export type CustomerDocument = {
   passwordResetIdentityLockedUntil?: Date;
 };
 
-// A city's price table, set by admins in the portal. Customers whose shop city
-// matches `nameKey` pay these prices; other products and cities use the
-// Shopify price. `adjustmentPercent` is 0 on lists created or saved since the
-// % was removed; an older list can still hold a % until it is saved again.
-// It stays stored as 0 so older versions of the app still read the list.
-export type CityPriceDocument = {
-  name: string;
-  nameKey: string;
-  adjustmentPercent?: number;
-  overrides: Array<{ variantId: string; price: number }>;
-  createdAt: Date;
-  updatedAt: Date;
-  updatedBy: string;
-};
-
 export type SessionDocument = {
   tokenHash: string;
   role: "admin" | "customer";
@@ -204,9 +189,6 @@ export async function getDatabase(): Promise<Db> {
         { key: { usernameNormalized: 1 }, unique: true },
         { key: { "shop_details.status": 1, createdAt: -1 } },
         { key: { shopifyCustomerId: 1 }, sparse: true },
-      ]),
-      database.collection<CityPriceDocument>("city_prices").createIndexes([
-        { key: { nameKey: 1 }, unique: true },
       ]),
       database.collection<SessionDocument>("auth_sessions").createIndexes([
         { key: { tokenHash: 1 }, unique: true },

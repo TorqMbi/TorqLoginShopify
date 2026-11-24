@@ -13,7 +13,6 @@ const mocks = vi.hoisted(() => ({
   completeShopifyPortalDraftOrder: vi.fn(),
   findShopifyPortalCheckout: vi.fn(),
   getShopifyPortalDraftOrder: vi.fn(),
-  findCityPrice: vi.fn(),
 }));
 
 vi.mock("@/lib/auth", () => ({
@@ -49,6 +48,11 @@ vi.mock("@/lib/shopify", () => ({
 
 import { POST } from "./route";
 import { ShopifyOperationError } from "@/lib/shopify";
+import {
+  CITY_PRICING_UNAVAILABLE_MESSAGE,
+  CityPricingUnavailableError,
+  parseCityPricingMatrix,
+} from "@/lib/city-pricing-rules";
 
 const productVariant = {
   variantId: "gid://shopify/ProductVariant/42",
@@ -124,13 +128,12 @@ describe("approved customer Shopify checkout", () => {
     mocks.getDatabase.mockResolvedValue({
       collection: (name: string) => name === "customers"
         ? { findOne: mocks.getCustomer }
-        : name === "city_prices"
-          ? { findOne: mocks.findCityPrice }
-          : orderCollection,
+        : orderCollection,
     });
     mocks.getShopifyCheckoutVariants.mockResolvedValue({
       currencyCode: "PKR",
       variants: [productVariant],
+      cityPricing: null,
     });
     mocks.createShopifyPortalDraftOrder.mockResolvedValue("gid://shopify/DraftOrder/90");
     mocks.completeShopifyPortalDraftOrder.mockResolvedValue({
@@ -141,63 +144,116 @@ describe("approved customer Shopify checkout", () => {
     });
     mocks.findShopifyPortalCheckout.mockResolvedValue(null);
     mocks.getShopifyPortalDraftOrder.mockResolvedValue(null);
-    mocks.findCityPrice.mockResolvedValue(null);
   });
 
-  it("charges the price in the shop's city table and sends it to Shopify", async () => {
-    mocks.findCityPrice.mockImplementation(async (filter: Record<string, unknown>) =>
-      filter.nameKey === "lahore"
-        ? { name: "Lahore", overrides: [{ variantId: productVariant.variantId, price: 35000 }] }
-        : null,
-    );
+  function useMatrix(cities: Array<Record<string, unknown>>, useDefaultPrices = false) {
+    mocks.getShopifyCheckoutVariants.mockResolvedValue({
+      currencyCode: "PKR",
+      variants: [productVariant],
+      cityPricing: parseCityPricingMatrix(JSON.stringify({ useDefaultPrices, baseCity: "Lahore", groups: [], cities })),
+    });
+  }
+
+  it("adds the shop's city % from the City-wise Pricing Matrix and notes it on the Shopify order", async () => {
+    useMatrix([{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }]);
     const response = await POST(request({
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 2 }],
     }));
 
     expect(response.status).toBe(201);
-    expect(mocks.findCityPrice).toHaveBeenCalledWith({ nameKey: "lahore" });
     expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 35000 }],
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
       priceCity: "Lahore",
+      priceAdjustmentPercent: 10,
     }), expect.anything());
     expect([...orders.values()][0].items).toEqual([
-      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 35000 }),
+      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 40920 }),
     ]);
   });
 
-  it("charges the Shopify price for products not in the city's table", async () => {
-    mocks.findCityPrice.mockResolvedValue({
-      name: "Lahore",
-      overrides: [{ variantId: "gid://shopify/ProductVariant/7", price: 100 }],
-    });
+  it("charges the Shopify price when the shop's city isn't in the matrix", async () => {
+    useMatrix([{ name: "Karachi", province: "Sindh", group: "", adjustment: 10 }]);
     const response = await POST(request({
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 1 }],
     }));
 
     expect(response.status).toBe(201);
-    // No custom price on the Shopify line, so Shopify shows its own price.
-    expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 1 }],
-      priceCity: "Lahore",
-    }), expect.anything());
+    const order = mocks.createShopifyPortalDraftOrder.mock.calls[0][0];
+    expect(order.items).toEqual([{ variantId: productVariant.variantId, quantity: 1 }]);
+    expect(order).not.toHaveProperty("priceCity");
     expect([...orders.values()][0].items).toEqual([
       expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 37200 }),
     ]);
   });
 
-  it("keeps an old list's % adjustment until staff save the list again", async () => {
-    mocks.findCityPrice.mockResolvedValue({ name: "Lahore", adjustmentPercent: 10, overrides: [] });
+  it("charges the Shopify price while \"Use default prices\" is on", async () => {
+    useMatrix([{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }], true);
     const response = await POST(request({
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 1 }],
     }));
 
     expect(response.status).toBe(201);
+    expect(mocks.createShopifyPortalDraftOrder.mock.calls[0][0].items).toEqual([
+      { variantId: productVariant.variantId, quantity: 1 },
+    ]);
+  });
+
+  it("stops before charging when prices changed after the customer opened the store", async () => {
+    useMatrix([{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }]);
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 2 }],
+      expectedTotal: 74400,
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Prices have been updated since you opened the store. Please check your cart total and confirm again.",
+      code: "PRICES_CHANGED",
+    });
+    expect(mocks.createShopifyPortalDraftOrder).not.toHaveBeenCalled();
+    expect(orders.size).toBe(0);
+  });
+
+  it("places the order when the total the customer saw still matches", async () => {
+    useMatrix([{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }]);
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 2 }],
+      expectedTotal: 81840,
+    }));
+
+    expect(response.status).toBe(201);
     expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 1, unitPrice: 40920 }],
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
     }), expect.anything());
+  });
+
+  it("refuses prices or a pricing city sent by the browser", async () => {
+    for (const body of [
+      { checkoutKey, items: [{ variantId: productVariant.variantId, quantity: 1, unitPrice: 1 }] },
+      { checkoutKey, items: [{ variantId: productVariant.variantId, quantity: 1 }], priceCity: "Multan" },
+      { checkoutKey, items: [{ variantId: productVariant.variantId, quantity: 1 }], expectedTotal: "1" },
+    ]) {
+      expect((await POST(request(body))).status).toBe(400);
+    }
+    expect(mocks.getShopifyCheckoutVariants).not.toHaveBeenCalled();
+  });
+
+  it("stops the order, keeping the cart, when the matrix can't be read", async () => {
+    mocks.getShopifyCheckoutVariants.mockRejectedValue(new CityPricingUnavailableError("not valid JSON"));
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 1 }],
+    }));
+
+    expect(response.status).toBe(503);
+    await expect(response.json()).resolves.toEqual({ error: CITY_PRICING_UNAVAILABLE_MESSAGE });
+    expect(mocks.createShopifyPortalDraftOrder).not.toHaveBeenCalled();
+    expect(orders.size).toBe(0);
   });
 
   it("uses only server-validated variants and saves the real Shopify order", async () => {

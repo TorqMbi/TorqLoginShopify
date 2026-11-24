@@ -2,7 +2,13 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ObjectId, type Collection } from "mongodb";
 import { getSession } from "@/lib/auth";
-import { cityUnitPrice, findCityPricing, type CityPricing } from "@/lib/city-pricing";
+import {
+  CITY_PRICING_UNAVAILABLE_MESSAGE,
+  CityPricingUnavailableError,
+  cityPricingFor,
+  cityUnitPrice,
+  type CityPricing,
+} from "@/lib/city-pricing-rules";
 import {
   getDatabase,
   isDatabaseConfigured,
@@ -26,7 +32,9 @@ import {
 const LEASE_MS = 30_000;
 const SHOPIFY_CHECKOUT_TIMEOUT_MS = 20_000;
 const MAX_CART_LINES = 100;
-const CHECKOUT_KEY_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+const PRICES_CHANGED_MESSAGE =
+  "Prices have been updated since you opened the store. Please check your cart total and confirm again.";
+const CHECKOUT_KEY_PATTERN =/^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 type CheckoutLine = { variantId: string; quantity: number };
 
@@ -36,12 +44,18 @@ class CheckoutError extends Error {
   }
 }
 
+// expectedTotal is the cart total the customer saw. It is never used as a
+// price: the server prices the order itself and only compares, so a price
+// change after the store was opened is shown before anything is charged.
 function parseCheckout(body: Record<string, unknown>): {
   checkoutKey: string;
   items: CheckoutLine[];
+  expectedTotal?: number;
 } {
   if (
-    Object.keys(body).some((key) => key !== "checkoutKey" && key !== "items") ||
+    Object.keys(body).some((key) => key !== "checkoutKey" && key !== "items" && key !== "expectedTotal") ||
+    (body.expectedTotal !== undefined &&
+      (typeof body.expectedTotal !== "number" || !Number.isFinite(body.expectedTotal) || body.expectedTotal < 0)) ||
     typeof body.checkoutKey !== "string" ||
     !CHECKOUT_KEY_PATTERN.test(body.checkoutKey) ||
     !Array.isArray(body.items) ||
@@ -76,7 +90,11 @@ function parseCheckout(body: Record<string, unknown>): {
     seenVariants.add(item.variantId);
     items.push({ variantId: item.variantId, quantity: item.quantity as number });
   }
-  return { checkoutKey: body.checkoutKey, items };
+  return {
+    checkoutKey: body.checkoutKey,
+    items,
+    ...(body.expectedTotal !== undefined ? { expectedTotal: body.expectedTotal as number } : {}),
+  };
 }
 
 function hashItems(items: CheckoutLine[]): string {
@@ -169,7 +187,7 @@ function buildLineItems(
       quantity,
       title: variant.title,
       sku: variant.sku,
-      unitPrice: cityUnitPrice(variant.unitPrice, variantId, cityPricing),
+      unitPrice: cityUnitPrice(variant.unitPrice, cityPricing),
     };
   });
 }
@@ -304,8 +322,6 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Complete your shop details before placing an order." }, { status: 409 });
     }
-    const cityPricing = await findCityPricing(database, details.city);
-
     const orderCollection = database.collection<ShopifyOrderDocument>("shopify_orders");
     const shopifyOptions: ShopifyRequestOptions = {
       deadlineAt: Date.now() + SHOPIFY_CHECKOUT_TIMEOUT_MS,
@@ -325,15 +341,27 @@ export async function POST(request: Request) {
       }
     }
 
-    const { variants, currencyCode } = await getShopifyCheckoutVariants(
+    // Prices and the City-wise Pricing Matrix come from the same Shopify read.
+    const { variants, currencyCode, cityPricing: pricingMatrix } = await getShopifyCheckoutVariants(
       checkout.items.map(({ variantId }) => variantId),
       shopifyOptions,
     );
     if (currencyCode !== "PKR") {
       return NextResponse.json({ error: "Orders are temporarily unavailable because the store currency is not PKR." }, { status: 503 });
     }
+    const cityPricing = cityPricingFor(pricingMatrix, details.city);
     const lineItems = buildLineItems(checkout.items, variants, cityPricing);
     const totalCartons = lineItems.reduce((sum, item) => sum + item.quantity, 0);
+    const totalPrice = lineItems.reduce((sum, item) => sum + item.unitPrice * item.quantity, 0);
+    if (
+      checkout.expectedTotal !== undefined &&
+      Math.round(totalPrice * 100) !== Math.round(checkout.expectedTotal * 100)
+    ) {
+      return NextResponse.json(
+        { error: PRICES_CHANGED_MESSAGE, code: "PRICES_CHANGED" },
+        { status: 409 },
+      );
+    }
     let claimed;
     try {
       claimed = await claimCheckout(
@@ -423,6 +451,7 @@ export async function POST(request: Request) {
                   ? { variantId, quantity }
                   : { variantId, quantity, unitPrice }),
               priceCity: cityPricing.name,
+              priceAdjustmentPercent: cityPricing.adjustmentPercent,
             }
             : { items: checkout.items }),
         }, shopifyOptions);
@@ -558,6 +587,10 @@ export async function POST(request: Request) {
     }
     if (error instanceof CheckoutError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof CityPricingUnavailableError) {
+      console.error("Checkout stopped: the City-wise Pricing Matrix could not be read.", error.message);
+      return NextResponse.json({ error: CITY_PRICING_UNAVAILABLE_MESSAGE }, { status: 503 });
     }
     console.error("Shopify checkout failed.");
     return NextResponse.json(
