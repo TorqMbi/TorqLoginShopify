@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AuthBackLink } from "@/app/components/auth-back-link";
 import { AuthForm } from "@/app/components/auth-form";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 
 export default async function LoginPage({
   searchParams,
@@ -32,7 +32,6 @@ export default async function LoginPage({
           </section>
         </div>
       </main>
-      <StoreFooter />
     </>
   );
 }

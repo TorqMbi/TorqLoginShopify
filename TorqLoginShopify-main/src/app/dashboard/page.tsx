@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { ObjectId } from "mongodb";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 import { getSession } from "@/lib/auth";
 import { getDatabase, type CustomerDocument } from "@/lib/db";
 import { AccountStatusSync } from "@/app/components/account-status-sync";
@@ -74,7 +74,6 @@ export default async function CustomerDashboard() {
           </div>
         </section>
       </main>
-      <StoreFooter />
     </>
   );
 }

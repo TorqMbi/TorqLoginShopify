@@ -2,7 +2,7 @@ import { ObjectId } from "mongodb";
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { AccountDetailsForm } from "@/app/components/account-details-form";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 import { getSession } from "@/lib/auth";
 import { listPricedCityNames } from "@/lib/city-pricing";
 import { getDatabase, type CustomerDocument } from "@/lib/db";
@@ -58,7 +58,6 @@ export default async function AccountDetailsPage() {
           />
         </section>
       </main>
-      <StoreFooter />
     </>
   );
 }

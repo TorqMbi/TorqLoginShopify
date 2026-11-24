@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AuthBackLink } from "@/app/components/auth-back-link";
 import { OtpResetForm } from "@/app/components/otp-reset-form";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 
 export default function ForgotPasswordPage() {
   return (
@@ -22,7 +22,6 @@ export default function ForgotPasswordPage() {
           </section>
         </div>
       </main>
-      <StoreFooter />
     </>
   );
 }

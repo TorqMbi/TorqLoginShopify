@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 
 type PolicySection = {
   title: string;
@@ -187,7 +187,6 @@ export default async function PolicyPage({
           </article>
         </div>
       </main>
-      <StoreFooter />
     </>
   );
 }

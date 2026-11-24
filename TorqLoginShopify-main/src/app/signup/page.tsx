@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { AuthBackLink } from "@/app/components/auth-back-link";
 import { AuthForm } from "@/app/components/auth-form";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 
 export default function SignupPage() {
   return (
@@ -21,7 +21,6 @@ export default function SignupPage() {
           </section>
         </div>
       </main>
-      <StoreFooter />
     </>
   );
 }

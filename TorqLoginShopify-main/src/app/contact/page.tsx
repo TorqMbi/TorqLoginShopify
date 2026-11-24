@@ -1,5 +1,5 @@
 import { ContactForm } from "@/app/components/contact-form";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 
 export const metadata = {
   title: "Contact TORQ Bearings",
@@ -15,7 +15,6 @@ export default function ContactPage() {
           <ContactForm />
         </section>
       </main>
-      <StoreFooter />
     </>
   );
 }

@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { ResetPasswordForm } from "@/app/components/reset-password-form";
-import { StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { StoreHeader } from "@/app/components/store-chrome";
 
 export default async function ResetPasswordPage({
   searchParams,
@@ -22,7 +22,6 @@ export default async function ResetPasswordPage({
           </div>
         </section>
       </main>
-      <StoreFooter />
     </>
   );
 }
