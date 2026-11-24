@@ -33,11 +33,11 @@ export function ResetPasswordForm({ token }: { token: string }) {
     <form className="form-stack" onSubmit={submit}>
       <div className="field">
         <label htmlFor="password">New Password</label>
-        <input id="password" name="password" type="password" autoComplete="new-password" minLength={10} maxLength={72} required placeholder="At least 10 characters" />
+        <input id="password" name="password" type="password" autoComplete="new-password" minLength={12} maxLength={72} required placeholder="At least 12 characters" />
       </div>
       <div className="field">
         <label htmlFor="confirmPassword">Confirm New Password</label>
-        <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" minLength={10} maxLength={72} required placeholder="Re-enter your new password" />
+        <input id="confirmPassword" name="confirmPassword" type="password" autoComplete="new-password" minLength={12} maxLength={72} required placeholder="Re-enter your new password" />
       </div>
       {error && <div className="message message-error" role="alert">{error}</div>}
       <button className="button" disabled={busy}>{busy ? "Updating…" : "Update password"}</button>

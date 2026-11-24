@@ -27,6 +27,8 @@ export type CustomerDocument = {
   sessionVersion?: number;
   passwordResetTokenHash?: string;
   passwordResetExpiresAt?: Date;
+  passwordResetIdentityAttempts?: number;
+  passwordResetIdentityLockedUntil?: Date;
 };
 
 // A city's price table, set by admins in the portal. Customers whose shop city

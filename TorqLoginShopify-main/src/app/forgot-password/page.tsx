@@ -13,7 +13,7 @@ export default function ForgotPasswordPage() {
           <section className="signup-card">
             <header className="signup-card-header">
               <h1>Reset your password</h1>
-              <p>Enter your registered mobile number. We&apos;ll send you a 6-digit code to set a new password.</p>
+              <p>Verify your registered mobile number, shop name and city to set a new password.</p>
             </header>
             <OtpResetForm />
             <p className="signup-login-prompt">

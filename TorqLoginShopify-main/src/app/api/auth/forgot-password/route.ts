@@ -22,6 +22,84 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Enter a valid mobile number in international format." }, { status: 400 });
   }
 
+  const hasIdentityFields =
+    typeof body?.shopName === "string" && typeof body?.city === "string";
+  if (hasIdentityFields) {
+    const shopName = (body.shopName as string).trim();
+    const city = (body.city as string).trim();
+    if (!shopName || !city) {
+      return NextResponse.json({ error: "Enter both your shop name and city." }, { status: 400 });
+    }
+
+    try {
+      const database = await getDatabase();
+      const now = new Date();
+      const customer = await database.collection<CustomerDocument>("customers").findOne(
+        { mobileNumber },
+        {
+          projection: {
+            _id: 1,
+            shop_details: 1,
+            passwordResetIdentityAttempts: 1,
+            passwordResetIdentityLockedUntil: 1,
+          },
+        },
+      );
+      if (!customer) {
+        return NextResponse.json({ error: "The account details do not match." }, { status: 400 });
+      }
+      if (
+        customer.passwordResetIdentityLockedUntil &&
+        customer.passwordResetIdentityLockedUntil > now
+      ) {
+        return NextResponse.json(
+          {
+            error: "Password reset is locked for this account for 24 hours. Please try again later.",
+          },
+          { status: 429 },
+        );
+      }
+
+      const matches =
+        (customer.shop_details?.shopName ?? "").trim().toLowerCase() === shopName.toLowerCase() &&
+        (customer.shop_details?.city ?? "").trim().toLowerCase() === city.toLowerCase();
+
+      if (!matches) {
+        const attempts = (customer.passwordResetIdentityAttempts ?? 0) + 1;
+        const update: {
+          $set: { passwordResetIdentityAttempts: number; passwordResetIdentityLockedUntil?: Date };
+        } = { $set: { passwordResetIdentityAttempts: attempts } };
+        if (attempts >= 3) {
+          update.$set.passwordResetIdentityLockedUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+          update.$set.passwordResetIdentityAttempts = 0;
+        }
+        await database.collection<CustomerDocument>("customers").updateOne(
+          { _id: customer._id },
+          update,
+        );
+        if (attempts >= 3) {
+          return NextResponse.json(
+            { error: "Too many incorrect attempts. Password reset is locked for 24 hours." },
+            { status: 429 },
+          );
+        }
+        return NextResponse.json(
+          { error: "The account details do not match. Check your shop name and city." },
+          { status: 400 },
+        );
+      }
+
+      await database.collection<CustomerDocument>("customers").updateOne(
+        { _id: customer._id },
+        { $unset: { passwordResetIdentityAttempts: "", passwordResetIdentityLockedUntil: "" } },
+      );
+      return NextResponse.json({ verified: true, message: "Account details verified." });
+    } catch (error) {
+      console.error("Password reset identity verification failed.", error);
+      return NextResponse.json({ error: "Unable to verify your account right now." }, { status: 500 });
+    }
+  }
+
   try {
     const database = await getDatabase();
     const customer = await database.collection<CustomerDocument>("customers").findOne(

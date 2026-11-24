@@ -24,7 +24,7 @@ export function isValidUsername(value: unknown): value is string {
 export function isValidPassword(value: unknown): value is string {
   return (
     typeof value === "string" &&
-    value.length >= 10 &&
+    value.length >= 12 &&
     Buffer.byteLength(value, "utf8") <= 72
   );
 }

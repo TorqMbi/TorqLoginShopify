@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useState } from "react";
 
-type Step = "number" | "code" | "done";
+type Step = "identity" | "password" | "done";
 
 const PASSWORD_MIN_LENGTH = 12;
 
@@ -20,62 +20,60 @@ async function postJson(url: string, body: Record<string, unknown>) {
 }
 
 export function OtpResetForm() {
-  const [step, setStep] = useState<Step>("number");
+  const [step, setStep] = useState<Step>("identity");
   const [mobileNumber, setMobileNumber] = useState("");
-  const [sentMessage, setSentMessage] = useState("");
+  const [shopName, setShopName] = useState("");
+  const [city, setCity] = useState("");
   const [error, setError] = useState("");
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [busy, setBusy] = useState(false);
-  const [cooldown, setCooldown] = useState(0);
   const [showPassword, setShowPassword] = useState(false);
-  const [staffMessage, setStaffMessage] = useState("");
-
-  useEffect(() => {
-    if (cooldown <= 0) return;
-    const timer = window.setTimeout(() => setCooldown((seconds) => seconds - 1), 1000);
-    return () => window.clearTimeout(timer);
-  }, [cooldown]);
 
   function clearFieldError(name: string) {
     setFieldErrors((current) => ({ ...current, [name]: "" }));
   }
 
-  async function sendCode(number: string) {
+  async function submitIdentity(event: FormEvent<HTMLFormElement>) {
+    event.preventDefault();
     setError("");
+    const formData = new FormData(event.currentTarget);
+    const number = String(formData.get("mobileNumber") ?? "").trim();
+    const shop = String(formData.get("shopName") ?? "").trim();
+    const location = String(formData.get("city") ?? "").trim();
+    const nextErrors: Record<string, string> = {};
+    if (!number) nextErrors.mobileNumber = "Enter your mobile number.";
+    if (!shop) nextErrors.shopName = "Enter your shop name.";
+    if (!location) nextErrors.city = "Enter your city.";
+    if (Object.keys(nextErrors).length) {
+      setFieldErrors(nextErrors);
+      return;
+    }
+    setFieldErrors({});
     setBusy(true);
     try {
-      const result = await postJson("/api/auth/forgot-password/code", { mobileNumber: number });
-      setSentMessage(result.message ?? "If this number is registered, we've sent a 6-digit code.");
-      setCooldown(result.resendAfterSeconds ?? 60);
-      setStep("code");
+      await postJson("/api/auth/forgot-password", {
+        mobileNumber: number,
+        shopName: shop,
+        city: location,
+      });
+      setMobileNumber(number);
+      setShopName(shop);
+      setCity(location);
+      setStep("password");
     } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to send a code right now.");
+      setError(caught instanceof Error ? caught.message : "Unable to verify your account.");
     } finally {
       setBusy(false);
     }
   }
 
-  async function submitNumber(event: FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const number = String(new FormData(event.currentTarget).get("mobileNumber") ?? "").trim();
-    if (!number) {
-      setFieldErrors({ mobileNumber: "Enter your mobile number." });
-      return;
-    }
-    setFieldErrors({});
-    setMobileNumber(number);
-    await sendCode(number);
-  }
-
-  async function submitCode(event: FormEvent<HTMLFormElement>) {
+  async function submitPassword(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setError("");
     const formData = new FormData(event.currentTarget);
-    const code = String(formData.get("code") ?? "").replace(/\s/g, "");
     const password = String(formData.get("password") ?? "");
     const confirmPassword = String(formData.get("confirmPassword") ?? "");
     const nextErrors: Record<string, string> = {};
-    if (!/^\d{6}$/.test(code)) nextErrors.code = "Enter the 6-digit code.";
     if (password.length < PASSWORD_MIN_LENGTH) nextErrors.password = `Password must be at least ${PASSWORD_MIN_LENGTH} characters.`;
     if (password !== confirmPassword) nextErrors.confirmPassword = "Passwords do not match.";
     if (Object.keys(nextErrors).length) {
@@ -85,7 +83,13 @@ export function OtpResetForm() {
     setFieldErrors({});
     setBusy(true);
     try {
-      await postJson("/api/auth/reset-password/code", { mobileNumber, code, password, confirmPassword });
+      await postJson("/api/auth/reset-password", {
+        mobileNumber,
+        shopName,
+        city,
+        password,
+        confirmPassword,
+      });
       setStep("done");
     } catch (caught) {
       setError(caught instanceof Error ? caught.message : "Unable to update your password right now.");
@@ -94,25 +98,10 @@ export function OtpResetForm() {
     }
   }
 
-  async function askStaff() {
-    setError("");
-    setBusy(true);
-    try {
-      const result = await postJson("/api/auth/forgot-password", { mobileNumber });
-      setStaffMessage(result.message ?? "Your request has been sent to our team.");
-    } catch (caught) {
-      setError(caught instanceof Error ? caught.message : "Unable to send your request right now.");
-    } finally {
-      setBusy(false);
-    }
-  }
-
-  function changeNumber() {
-    setStep("number");
+  function changeIdentity() {
+    setStep("identity");
     setError("");
     setFieldErrors({});
-    setStaffMessage("");
-    setCooldown(0);
   }
 
   if (step === "done") {
@@ -126,9 +115,9 @@ export function OtpResetForm() {
     );
   }
 
-  if (step === "number") {
+  if (step === "identity") {
     return (
-      <form className="form-stack login-form" onSubmit={submitNumber} noValidate>
+      <form className="form-stack login-form" onSubmit={submitIdentity} noValidate>
         {error && <div className="message message-error" role="alert">{error}</div>}
         <div className="field">
           <label htmlFor="resetMobileNumber">Mobile number</label>
@@ -147,34 +136,49 @@ export function OtpResetForm() {
           />
           {fieldErrors.mobileNumber && <span className="field-error" id="resetMobileNumber-error">{fieldErrors.mobileNumber}</span>}
         </div>
+        <div className="field">
+          <label htmlFor="resetShopName">Shop name</label>
+          <input
+            id="resetShopName"
+            name="shopName"
+            type="text"
+            autoComplete="organization"
+            required
+            defaultValue={shopName}
+            placeholder="Al-Madina Traders"
+            aria-invalid={Boolean(fieldErrors.shopName)}
+            aria-describedby={fieldErrors.shopName ? "resetShopName-error" : undefined}
+            onChange={() => clearFieldError("shopName")}
+          />
+          {fieldErrors.shopName && <span className="field-error" id="resetShopName-error">{fieldErrors.shopName}</span>}
+        </div>
+        <div className="field">
+          <label htmlFor="resetCity">City</label>
+          <input
+            id="resetCity"
+            name="city"
+            type="text"
+            autoComplete="address-level2"
+            required
+            defaultValue={city}
+            placeholder="Lahore"
+            aria-invalid={Boolean(fieldErrors.city)}
+            aria-describedby={fieldErrors.city ? "resetCity-error" : undefined}
+            onChange={() => clearFieldError("city")}
+          />
+          {fieldErrors.city && <span className="field-error" id="resetCity-error">{fieldErrors.city}</span>}
+        </div>
         <button className="button" type="submit" disabled={busy}>
-          {busy ? <><span className="signup-spinner" aria-hidden="true" />Sending code</> : "Send code"}
+          {busy ? <><span className="signup-spinner" aria-hidden="true" />Verifying</> : "Verify account"}
         </button>
       </form>
     );
   }
 
   return (
-    <form className="form-stack login-form" onSubmit={submitCode} noValidate>
-      <div className="message message-success" role="status">{sentMessage}</div>
+    <form className="form-stack login-form" onSubmit={submitPassword} noValidate>
+      <div className="message message-success" role="status">Account verified. Enter your new password.</div>
       {error && <div className="message message-error" role="alert">{error}</div>}
-      <div className="field">
-        <label htmlFor="resetCode">6-digit code</label>
-        <input
-          id="resetCode"
-          name="code"
-          type="text"
-          inputMode="numeric"
-          autoComplete="one-time-code"
-          maxLength={6}
-          required
-          placeholder="123456"
-          aria-invalid={Boolean(fieldErrors.code)}
-          aria-describedby={fieldErrors.code ? "resetCode-error" : undefined}
-          onChange={() => clearFieldError("code")}
-        />
-        {fieldErrors.code && <span className="field-error" id="resetCode-error">{fieldErrors.code}</span>}
-      </div>
       <div className="field">
         <label htmlFor="resetPassword">New password</label>
         <div className="signup-password-box">
@@ -220,23 +224,10 @@ export function OtpResetForm() {
         {busy ? <><span className="signup-spinner" aria-hidden="true" />Updating password</> : "Reset password"}
       </button>
       <div className="otp-reset-actions">
-        <button type="button" className="otp-text-button" disabled={busy || cooldown > 0} onClick={() => void sendCode(mobileNumber)}>
-          {cooldown > 0 ? `Resend code in ${cooldown}s` : "Resend code"}
-        </button>
-        <button type="button" className="otp-text-button" disabled={busy} onClick={changeNumber}>
-          Use a different number
+        <button type="button" className="otp-text-button" disabled={busy} onClick={changeIdentity}>
+          Change account details
         </button>
       </div>
-      {staffMessage ? (
-        <div className="message message-success" role="status">{staffMessage}</div>
-      ) : (
-        <p className="otp-reset-help">
-          Didn&apos;t get a code?{" "}
-          <button type="button" className="otp-text-button" disabled={busy} onClick={() => void askStaff()}>
-            Ask our team for a reset link
-          </button>
-        </p>
-      )}
     </form>
   );
 }

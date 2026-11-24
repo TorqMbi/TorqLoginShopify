@@ -25,7 +25,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "Username must be 3–32 characters using letters, numbers, dots, underscores or hyphens." }, { status: 400 });
   }
   if (!isValidPassword(body.password)) {
-    return NextResponse.json({ error: "Password must be between 10 and 72 characters." }, { status: 400 });
+    return NextResponse.json({ error: "Password must be between 12 and 72 characters." }, { status: 400 });
   }
   if (body.password !== body.confirmPassword) {
     return NextResponse.json({ error: "Passwords do not match." }, { status: 400 });
