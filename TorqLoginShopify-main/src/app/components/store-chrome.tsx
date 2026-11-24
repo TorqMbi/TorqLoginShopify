@@ -8,11 +8,15 @@ export { getCustomerHeaderCustomer } from "@/lib/customer-header";
 
 export async function StoreHeader({
   customer,
+  hideHome = false,
+  hideContact = false,
 }: {
   customer?: CustomerHeaderCustomer;
+  hideHome?: boolean;
+  hideContact?: boolean;
 } = {}) {
   const headerCustomer = customer ?? await getCustomerHeaderCustomer();
-  return <CustomerHeader customer={headerCustomer} />;
+  return <CustomerHeader customer={headerCustomer} hideHome={hideHome} hideContact={hideContact} />;
 }
 
 const footerLinks = [

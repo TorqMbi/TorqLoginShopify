@@ -452,16 +452,48 @@ export function Storefront({ products, customer }: Props) {
             <button className="store-dialog-close" type="button" onClick={() => setSelectedProduct(null)} aria-label="Close dialog">×</button>
             <h2>{selectedProduct.title}</h2>
             <div className="store-details-content">
-              {productImage(selectedProduct, "store-details-image")}
-              <div>
-                {selectedProduct.sku && <p>SKU: <strong>{selectedProduct.sku}</strong></p>}
-                <p>Stock: <strong>{selectedProduct.inventoryCartons} cartons</strong></p>
+              <div className="store-dialog-hero">
+                {productImage(selectedProduct, "store-details-image")}
+                <div className="store-dialog-hero-info">
+                  <div className="store-dialog-stock">
+                    <span>Stock:</span>
+                    <strong>{selectedProduct.inventoryCartons} cartons</strong>
+                    <span className={`store-dialog-stock-badge ${selectedProduct.inventoryCartons > 0 ? "is-in-stock" : "is-out-of-stock"}`}>
+                      {selectedProduct.inventoryCartons > 0 ? "In Stock" : "Out of Stock"}
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <div className="store-dialog-product-details">
                 <p>Price per carton: <strong>{productPrice(selectedProduct.cartonPrice)}</strong></p>
                 {selectedProduct.pricePerPiece !== null && <p>Price per piece: <strong>{productPrice(selectedProduct.pricePerPiece)}</strong></p>}
                 {selectedProduct.piecesPerCarton !== null && <p>Pieces per carton: <strong>{selectedProduct.piecesPerCarton}</strong></p>}
-                <p>Quantity: {stepper(selectedProduct, true)}</p>
+                <div className="store-dialog-quantity">
+                  <span>Quantity:</span>
+                  {stepper(selectedProduct, true)}
+                </div>
+                <p className="store-dialog-total" aria-live="polite">
+                  Total price: <strong>
+                    Rs {formatPrice((selectedProduct.cartonPrice ?? 0) * (quantities[selectedProduct.variantId] ?? 0))}
+                  </strong>
+                </p>
               </div>
             </div>
+            <button
+              className="store-dialog-view-cart"
+              type="button"
+              onClick={() => {
+                setSelectedProduct(null);
+                setCartOpen(true);
+              }}
+            >
+              <svg viewBox="0 0 24 24" aria-hidden="true">
+                <path d="M2.5 4h2l2.2 11.1a2 2 0 0 0 2 1.6h8.8a2 2 0 0 0 1.9-1.4L21 8H6" />
+                <circle cx="9.5" cy="20" r="1" />
+                <circle cx="18" cy="20" r="1" />
+              </svg>
+              View Cart
+            </button>
           </section>
         </div>
       )}

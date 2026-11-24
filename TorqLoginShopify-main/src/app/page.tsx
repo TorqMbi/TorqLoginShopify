@@ -28,9 +28,9 @@ export default async function HomePage() {
           : null;
 
   return (
-    <>
-        <StoreHeader customer={customer} />
-      <main className="landing-page">
+    <div className="landing-home-shell">
+      <StoreHeader customer={customer} hideHome hideContact />
+      <main className="landing-page landing-home-page">
         <BearingCarousel />
 
         <div className="landing-content">
@@ -56,6 +56,6 @@ export default async function HomePage() {
           </section>
         </div>
       </main>
-    </>
+    </div>
   );
 }

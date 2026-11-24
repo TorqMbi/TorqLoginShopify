@@ -20,6 +20,8 @@ type Props = {
   customer: CustomerHeaderCustomer;
   cartCount?: number;
   onCartClick?: () => void;
+  hideHome?: boolean;
+  hideContact?: boolean;
 };
 
 type MenuItem = {
@@ -220,14 +222,18 @@ export function CustomerHeader({
   customer,
   cartCount = 0,
   onCartClick,
+  hideHome = false,
+  hideContact = false,
 }: Props) {
   const pathname = usePathname() ?? "";
   const hasAccountDetails = customer.status === "no-details" ||
     customer.status === "pending" ||
     customer.status === "approved";
   const navLinks = [
-    { label: "Home", href: "/", active: pathname === "/" },
-    { label: "Contact", href: "/contact", active: pathname.startsWith("/contact") },
+    ...(!hideHome ? [{ label: "Home", href: "/", active: pathname === "/" }] : []),
+    ...(!hideContact
+      ? [{ label: "Contact", href: "/contact", active: pathname.startsWith("/contact") }]
+      : []),
     ...(hasAccountDetails
       ? [{ label: "Edit details", href: "/account/details", active: pathname.startsWith("/account/details") }]
       : []),
@@ -245,18 +251,20 @@ export function CustomerHeader({
             <small>Industries</small>
           </span>
         </Link>
-        <nav className="customer-site-nav" aria-label="Main navigation">
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className={link.active ? "is-active" : undefined}
-              aria-current={link.active ? "page" : undefined}
-            >
-              {link.label}
-            </Link>
-          ))}
-        </nav>
+        {navLinks.length > 0 && (
+          <nav className="customer-site-nav" aria-label="Main navigation">
+            {navLinks.map((link) => (
+              <Link
+                key={link.href}
+                href={link.href}
+                className={link.active ? "is-active" : undefined}
+                aria-current={link.active ? "page" : undefined}
+              >
+                {link.label}
+              </Link>
+            ))}
+          </nav>
+        )}
         <div className="customer-site-actions">
           <ProfileMenu customer={customer} />
           {customer.status === "approved" && (
