@@ -1508,6 +1508,24 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   top: 0;
   z-index: 50;
 }
+
+@media (max-width: 639px) {
+  .signup-page {
+    min-height: calc(100dvh - 136px);
+    padding: 96px 16px 48px;
+    place-items: start center;
+  }
+  .auth-card-container {
+    width: 100%;
+  }
+  .auth-back-link {
+    top: -40px;
+  }
+  .signup-card {
+    max-width: none;
+    padding: 24px 20px;
+  }
+}
 .account-details-page {
   flex: 1 0 auto;
   min-height: 0;
