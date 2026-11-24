@@ -2417,24 +2417,32 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 }
 
 .contact-page {
-  flex: 1 0 auto;
+  flex: 1 0 0;
   display: flex;
   flex-direction: column;
+  width: 100%;
+  height: calc(100vh - 68px);
+  height: calc(100dvh - 68px);
   min-height: calc(100vh - 68px);
   min-height: calc(100dvh - 68px);
   color: #f0f2f3;
   background: #111417;
   font-family: "Inter", "Segoe UI", sans-serif;
-  overflow: visible;
-  touch-action: pan-y;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
+  overscroll-behavior: none;
+  touch-action: none;
 }
 html:has(.contact-page),
 body:has(.contact-page) {
-  height: auto;
-  min-height: 100%;
+  height: 100vh;
+  height: 100dvh;
+  min-height: 100vh;
+  min-height: 100dvh;
+  max-height: 100vh;
+  max-height: 100dvh;
   overflow-x: hidden;
-  overflow-y: auto;
+  overflow-y: hidden;
+  overscroll-behavior: none;
 }
 .contact-page-header {
   min-height: 56px;
