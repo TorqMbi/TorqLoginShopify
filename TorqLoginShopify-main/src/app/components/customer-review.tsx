@@ -22,7 +22,8 @@ type CustomerData = {
     comments: string;
     submittedAt: string | null;
   };
-  pricing?: { city: string; productPrices: number; legacyAdjustmentPercent: number } | null;
+  // What this shop pays, from the City-wise Pricing Matrix in Shopify.
+  pricing?: string;
   shopifySync: {
     state: ShopifySyncState;
     lastError: string;
@@ -44,16 +45,6 @@ function syncLabel(state: ShopifySyncState): string {
   if (state === "synced") return "Synced";
   if (state === "failed") return "Sync Failed";
   return "Pending Sync";
-}
-
-function pricingLabel(pricing: CustomerData["pricing"]): string {
-  if (!pricing) return "Standard Shopify prices (city has no price list)";
-  const priced = pricing.productPrices === 1 ? "1 product" : `${pricing.productPrices} products`;
-  const legacy = pricing.legacyAdjustmentPercent;
-  const rest = legacy === 0
-    ? "Shopify price for the rest"
-    : `old ${legacy > 0 ? "+" : ""}${legacy}% rule on the rest until the list is saved`;
-  return `${pricing.city} price list (${priced} at ${pricing.city} prices, ${rest})`;
 }
 
 export function CustomerReview({ customerId }: { customerId: string }) {
@@ -158,7 +149,7 @@ export function CustomerReview({ customerId }: { customerId: string }) {
           <div><dt>Shop address</dt><dd>{detail.shopAddress || "—"}</dd></div>
           <div><dt>Detailed address</dt><dd>{detail.detailedAddress || "—"}</dd></div>
           <div><dt>City / province</dt><dd>{detail.city || "—"}, {detail.province || "—"}</dd></div>
-          <div><dt>Prices</dt><dd>{pricingLabel(customer.pricing)}</dd></div>
+          <div><dt>Prices</dt><dd>{customer.pricing ?? "—"}</dd></div>
           <div><dt>Comments</dt><dd>{detail.comments || "—"}</dd></div>
           <div><dt>Submitted</dt><dd>{detail.submittedAt ? new Date(detail.submittedAt).toLocaleString() : "Not submitted"}</dd></div>
         </dl>

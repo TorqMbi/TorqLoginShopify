@@ -4,8 +4,20 @@ import { redirect } from "next/navigation";
 import { AccountDetailsForm } from "@/app/components/account-details-form";
 import { StoreHeader } from "@/app/components/store-chrome";
 import { getSession } from "@/lib/auth";
-import { listPricedCityNames } from "@/lib/city-pricing";
+import { cityChoices } from "@/lib/city-pricing";
 import { getDatabase, type CustomerDocument } from "@/lib/db";
+import { getShopifyCityPricingMatrix } from "@/lib/shopify";
+
+// Cities from the City-wise Pricing Matrix in Shopify. If Shopify can't be
+// reached the form falls back to typing the city.
+async function loadCityChoices() {
+  try {
+    return cityChoices(await getShopifyCityPricingMatrix());
+  } catch (error) {
+    console.error("City pricing matrix could not be read.", error instanceof Error ? error.message : "");
+    return [];
+  }
+}
 
 export default async function AccountDetailsPage() {
   const session = await getSession();
@@ -23,7 +35,7 @@ export default async function AccountDetailsPage() {
   );
   if (!customer) redirect("/signup");
   const details = customer.shop_details;
-  const pricedCities = await listPricedCityNames(database);
+  const choices = await loadCityChoices();
 
   return (
     <>
@@ -41,8 +53,8 @@ export default async function AccountDetailsPage() {
           </header>
           <AccountDetailsForm
             completed={Boolean(details?.completedAt)}
-            pricedCities={pricedCities}
-            cityLocked={pricedCities.length > 0 && details?.status === "approved"}
+            cityChoices={choices}
+            cityLocked={choices.length > 0 && details?.status === "approved"}
             initialValues={{
               contactPersonName: details?.contactPersonName ?? "",
               shopName: details?.shopName ?? "",

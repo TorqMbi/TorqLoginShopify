@@ -2,7 +2,13 @@ import { createHash, randomUUID } from "node:crypto";
 import { NextResponse } from "next/server";
 import { ObjectId, type Collection } from "mongodb";
 import { getSession } from "@/lib/auth";
-import { cityUnitPrice, findCityPricing, type CityPricing } from "@/lib/city-pricing";
+import {
+  CITY_PRICING_UNAVAILABLE_MESSAGE,
+  CityPricingUnavailableError,
+  cityPricingFor,
+  cityUnitPrice,
+  type CityPricing,
+} from "@/lib/city-pricing-rules";
 import {
   getDatabase,
   isDatabaseConfigured,
@@ -169,7 +175,7 @@ function buildLineItems(
       quantity,
       title: variant.title,
       sku: variant.sku,
-      unitPrice: cityUnitPrice(variant.unitPrice, variantId, cityPricing),
+      unitPrice: cityUnitPrice(variant.unitPrice, cityPricing),
     };
   });
 }
@@ -304,8 +310,6 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Complete your shop details before placing an order." }, { status: 409 });
     }
-    const cityPricing = await findCityPricing(database, details.city);
-
     const orderCollection = database.collection<ShopifyOrderDocument>("shopify_orders");
     const shopifyOptions: ShopifyRequestOptions = {
       deadlineAt: Date.now() + SHOPIFY_CHECKOUT_TIMEOUT_MS,
@@ -325,13 +329,15 @@ export async function POST(request: Request) {
       }
     }
 
-    const { variants, currencyCode } = await getShopifyCheckoutVariants(
+    // Prices and the City-wise Pricing Matrix come from the same Shopify read.
+    const { variants, currencyCode, cityPricing: pricingMatrix } = await getShopifyCheckoutVariants(
       checkout.items.map(({ variantId }) => variantId),
       shopifyOptions,
     );
     if (currencyCode !== "PKR") {
       return NextResponse.json({ error: "Orders are temporarily unavailable because the store currency is not PKR." }, { status: 503 });
     }
+    const cityPricing = cityPricingFor(pricingMatrix, details.city);
     const lineItems = buildLineItems(checkout.items, variants, cityPricing);
     const totalCartons = lineItems.reduce((sum, item) => sum + item.quantity, 0);
     let claimed;
@@ -423,6 +429,7 @@ export async function POST(request: Request) {
                   ? { variantId, quantity }
                   : { variantId, quantity, unitPrice }),
               priceCity: cityPricing.name,
+              priceAdjustmentPercent: cityPricing.adjustmentPercent,
             }
             : { items: checkout.items }),
         }, shopifyOptions);
@@ -558,6 +565,10 @@ export async function POST(request: Request) {
     }
     if (error instanceof CheckoutError) {
       return NextResponse.json({ error: error.message }, { status: error.status });
+    }
+    if (error instanceof CityPricingUnavailableError) {
+      console.error("Checkout stopped: the City-wise Pricing Matrix could not be read.", error.message);
+      return NextResponse.json({ error: CITY_PRICING_UNAVAILABLE_MESSAGE }, { status: 503 });
     }
     console.error("Shopify checkout failed.");
     return NextResponse.json(

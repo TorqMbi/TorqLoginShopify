@@ -1,8 +1,8 @@
 import { redirect } from "next/navigation";
 import { Storefront } from "@/app/components/storefront";
 import { getCustomerHeaderCustomer } from "@/app/components/store-chrome";
-import { applyCityPricing, getCustomerCityPricing } from "@/lib/city-pricing";
-import { getActiveShopifyProducts, type ShopifyStoreProduct } from "@/lib/shopify";
+import { applyCityPricing, cityPricingFor, getCustomerCity } from "@/lib/city-pricing";
+import { getActiveShopifyCatalog, type ShopifyStoreProduct } from "@/lib/shopify";
 import { isDatabaseConfigured } from "@/lib/db";
 import { getStoreAccess } from "@/lib/store-access";
 import { AccountStatusSync } from "@/app/components/account-status-sync";
@@ -19,13 +19,14 @@ export default async function StorePage() {
 
   let products: ShopifyStoreProduct[] | null = null;
   try {
-    const [shopifyProducts, cityPricing] = await Promise.all([
-      getActiveShopifyProducts(),
-      getCustomerCityPricing(access.customerId),
+    const [catalog, city] = await Promise.all([
+      getActiveShopifyCatalog(),
+      getCustomerCity(access.customerId),
     ]);
-    products = applyCityPricing(shopifyProducts, cityPricing);
-  } catch {
-    console.error("Approved store page product request failed.");
+    products = applyCityPricing(catalog.products, cityPricingFor(catalog.cityPricing, city));
+  } catch (error) {
+    // Includes an unreadable City-wise Pricing Matrix: no prices beat wrong ones.
+    console.error("Approved store page product request failed.", error instanceof Error ? error.name : "");
   }
 
   return (

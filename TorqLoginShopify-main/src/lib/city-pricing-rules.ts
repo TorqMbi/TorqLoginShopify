@@ -1,93 +1,123 @@
 import type { ShopifyStoreProduct } from "@/lib/shopify";
 
-// City pricing: admins keep a price table for each city. Shops in that city
-// pay the table price for a product; a product without one, and every product
-// in a city without a table, costs the normal Shopify price.
+// City pricing is managed in Shopify admin by the "TORQ City Pricing" app
+// (City-wise Pricing Matrix), which saves its setup as JSON in the shop
+// metafield torq.city_pricing. The portal only reads it: a shop pays the
+// Shopify price plus its city's adjustment %. Cities not in the matrix, and
+// every city while "Use default prices" is on, pay the plain Shopify price.
 
-export const CITY_PRICES_COLLECTION = "city_prices";
-export const MAX_CITY_PRICE = 100_000_000;
-export const MAX_PRICE_OVERRIDES = 2_000;
+export const CITY_PRICING_NAMESPACE = "torq";
+export const CITY_PRICING_KEY = "city_pricing";
 export const CITY_LOCKED_MESSAGE =
   "Your prices depend on your city, so it can't be changed after your account is approved. Please contact us on WhatsApp to change it.";
+export const CITY_PRICING_UNAVAILABLE_MESSAGE =
+  "City prices couldn't be loaded from Shopify. Please try again in a few minutes.";
 
-const VARIANT_ID_PATTERN = /^gid:\/\/shopify\/ProductVariant\/\d+$/;
-// Letters first, then letters, spaces, dots, apostrophes or hyphens; 2–30 characters.
-const CITY_NAME_PATTERN = /^\p{L}[\p{L}\p{M} .'-]{1,29}$/u;
+// Adjustments outside this range are treated as a broken matrix rather than
+// charged, e.g. -100% would make products free.
+const MIN_ADJUSTMENT_PERCENT = -99;
+const MAX_ADJUSTMENT_PERCENT = 1000;
 
-export type CityPriceOverride = { variantId: string; price: number };
-
-export type CityPricing = {
+export type CityPricingCity = {
   name: string;
-  overrides: ReadonlyMap<string, number>;
-  // Price lists saved before the % adjustment was removed (Nov 2026) can still
-  // carry one. It covers products without a table price until staff save the
-  // list again, so shops' prices don't change when this version goes live.
-  legacyAdjustmentPercent: number;
+  province: string;
+  group: string;
+  adjustmentPercent: number;
 };
+
+export type CityPricingMatrix = {
+  useDefaultPrices: boolean;
+  baseCity: string;
+  cities: CityPricingCity[];
+  updatedAt: string | null;
+};
+
+// The adjustment that applies to one shop.
+export type CityPricing = { name: string; adjustmentPercent: number };
+
+export class CityPricingUnavailableError extends Error {
+  constructor(detail: string) {
+    super(`City pricing matrix is unreadable: ${detail}`);
+    this.name = "CityPricingUnavailableError";
+  }
+}
 
 export function cityKey(value: unknown): string {
   return typeof value === "string" ? value.trim().replace(/\s+/g, " ").toLowerCase() : "";
 }
 
-export function cleanCityName(value: unknown): string | null {
-  if (typeof value !== "string") return null;
-  const name = value.trim().replace(/\s+/g, " ");
-  return CITY_NAME_PATTERN.test(name) ? name : null;
+function text(value: unknown): string {
+  return typeof value === "string" ? value.trim().replace(/\s+/g, " ") : "";
 }
 
-function roundToCents(value: number): number {
-  return Math.round(value * 100) / 100;
-}
-
-export function parseCityPrice(value: unknown): number | null {
-  if (typeof value !== "number" || !Number.isFinite(value)) return null;
-  if (value <= 0 || value > MAX_CITY_PRICE) return null;
-  return roundToCents(value);
-}
-
-export function parsePriceOverrides(value: unknown): CityPriceOverride[] | null {
-  if (!Array.isArray(value) || value.length > MAX_PRICE_OVERRIDES) return null;
-  const seen = new Set<string>();
-  const overrides: CityPriceOverride[] = [];
-  for (const entry of value) {
-    if (!entry || typeof entry !== "object" || Array.isArray(entry)) return null;
-    const { variantId, price } = entry as Record<string, unknown>;
-    if (typeof variantId !== "string" || !VARIANT_ID_PATTERN.test(variantId) || seen.has(variantId)) {
-      return null;
-    }
-    const parsedPrice = parseCityPrice(price);
-    if (parsedPrice === null) return null;
-    seen.add(variantId);
-    overrides.push({ variantId, price: parsedPrice });
+// Reads the metafield value. Returns null when the matrix has never been
+// saved (everyone pays Shopify prices) and throws when it is malformed, so a
+// broken matrix stops orders instead of silently charging the wrong price.
+export function parseCityPricingMatrix(
+  value: string | null | undefined,
+  updatedAt: string | null = null,
+): CityPricingMatrix | null {
+  if (value === null || value === undefined || value.trim() === "") return null;
+  let data: unknown;
+  try {
+    data = JSON.parse(value);
+  } catch {
+    throw new CityPricingUnavailableError("not valid JSON");
   }
-  return overrides;
+  if (!data || typeof data !== "object" || Array.isArray(data)) {
+    throw new CityPricingUnavailableError("not an object");
+  }
+  const { useDefaultPrices, baseCity, cities } = data as Record<string, unknown>;
+  if (useDefaultPrices !== undefined && typeof useDefaultPrices !== "boolean") {
+    throw new CityPricingUnavailableError("useDefaultPrices is not true or false");
+  }
+  if (!Array.isArray(cities)) throw new CityPricingUnavailableError("cities is not a list");
+
+  const seen = new Set<string>();
+  const parsed: CityPricingCity[] = [];
+  for (const entry of cities) {
+    if (!entry || typeof entry !== "object" || Array.isArray(entry)) {
+      throw new CityPricingUnavailableError("a city entry is not an object");
+    }
+    const city = entry as Record<string, unknown>;
+    const name = text(city.name);
+    if (!name) throw new CityPricingUnavailableError("a city has no name");
+    const adjustment = city.adjustment ?? 0;
+    if (
+      typeof adjustment !== "number" ||
+      !Number.isFinite(adjustment) ||
+      adjustment < MIN_ADJUSTMENT_PERCENT ||
+      adjustment > MAX_ADJUSTMENT_PERCENT
+    ) {
+      throw new CityPricingUnavailableError(`${name} has an invalid adjustment`);
+    }
+    // The first entry wins if a city is listed twice.
+    if (seen.has(cityKey(name))) continue;
+    seen.add(cityKey(name));
+    parsed.push({ name, province: text(city.province), group: text(city.group), adjustmentPercent: adjustment });
+  }
+  return { useDefaultPrices: useDefaultPrices === true, baseCity: text(baseCity), cities: parsed, updatedAt };
 }
 
-export function toCityPricing(document: {
-  name: string;
-  overrides: CityPriceOverride[];
-  adjustmentPercent?: number;
-}): CityPricing {
-  const legacy = document.adjustmentPercent;
-  return {
-    name: document.name,
-    overrides: new Map(document.overrides.map(({ variantId, price }) => [variantId, price])),
-    legacyAdjustmentPercent: typeof legacy === "number" && Number.isFinite(legacy) ? legacy : 0,
-  };
+export function findMatrixCity(matrix: CityPricingMatrix | null, city: unknown): CityPricingCity | null {
+  const key = cityKey(city);
+  if (!matrix || !key) return null;
+  return matrix.cities.find((entry) => cityKey(entry.name) === key) ?? null;
 }
 
-// The city's table price wins; otherwise the Shopify price applies (with an
-// old list's % on top, rounded to the nearest rupee, until it is re-saved).
-export function cityUnitPrice(
-  basePrice: number,
-  variantId: string,
-  pricing: CityPricing | null,
-): number {
+// The % a shop in this city pays on top of Shopify prices, or null when it
+// pays plain Shopify prices.
+export function cityPricingFor(matrix: CityPricingMatrix | null, city: unknown): CityPricing | null {
+  if (!matrix || matrix.useDefaultPrices) return null;
+  const entry = findMatrixCity(matrix, city);
+  if (!entry || entry.adjustmentPercent === 0) return null;
+  return { name: entry.name, adjustmentPercent: entry.adjustmentPercent };
+}
+
+// Shopify price plus the city's %, rounded to the nearest rupee.
+export function cityUnitPrice(basePrice: number, pricing: CityPricing | null): number {
   if (!pricing) return basePrice;
-  const tablePrice = pricing.overrides.get(variantId);
-  if (tablePrice !== undefined) return tablePrice;
-  if (pricing.legacyAdjustmentPercent === 0) return basePrice;
-  return Math.max(0, Math.round((basePrice * (100 + pricing.legacyAdjustmentPercent)) / 100));
+  return Math.max(0, Math.round((basePrice * (100 + pricing.adjustmentPercent)) / 100));
 }
 
 export function applyCityPricing(
@@ -97,7 +127,7 @@ export function applyCityPricing(
   if (!pricing) return products;
   return products.map((product) => {
     if (product.cartonPrice === null) return product;
-    const cartonPrice = cityUnitPrice(product.cartonPrice, product.variantId, pricing);
+    const cartonPrice = cityUnitPrice(product.cartonPrice, pricing);
     return {
       ...product,
       cartonPrice,
@@ -106,4 +136,14 @@ export function applyCityPricing(
         : null,
     };
   });
+}
+
+// Matrix cities grouped by province, in the matrix's order, for city pickers.
+export function cityChoices(matrix: CityPricingMatrix | null): Array<{ province: string; cities: string[] }> {
+  const groups = new Map<string, string[]>();
+  for (const city of matrix?.cities ?? []) {
+    const province = city.province || "Other";
+    groups.set(province, [...(groups.get(province) ?? []), city.name]);
+  }
+  return [...groups].map(([province, cities]) => ({ province, cities }));
 }

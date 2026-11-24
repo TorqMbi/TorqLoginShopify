@@ -10,6 +10,12 @@ import {
 import { hasShopifyStatusTag, shopifyStatusTag, SHOPIFY_STATUS_TAGS } from "./verification";
 import { getDatabase } from "./db";
 import type { AccountStatus, CustomerDocument } from "./db";
+import {
+  CITY_PRICING_KEY,
+  CITY_PRICING_NAMESPACE,
+  parseCityPricingMatrix,
+  type CityPricingMatrix,
+} from "./city-pricing-rules";
 
 const API_VERSION = "2026-10";
 const TOKEN_CACHE_ID = "shopify-admin-access-token";
@@ -66,9 +72,21 @@ const DELETE_METAFIELDS_MUTATION = `mutation DeleteCustomerMetafields($metafield
     userErrors { field message }
   }
 }`;
+// The City-wise Pricing Matrix saved by the TORQ City Pricing app in Shopify
+// admin. Read together with prices so the two always match.
+const CITY_PRICING_FIELD = `cityPricing: metafield(namespace: "${CITY_PRICING_NAMESPACE}", key: "${CITY_PRICING_KEY}") {
+    value
+    updatedAt
+  }`;
+const CITY_PRICING_QUERY = `query CityPricingMatrix {
+  shop {
+    ${CITY_PRICING_FIELD}
+  }
+}`;
 const ACTIVE_PRODUCTS_QUERY = `query ActiveStoreProducts($after: String) {
   shop {
     currencyCode
+    ${CITY_PRICING_FIELD}
   }
   products(first: 100, after: $after, query: "status:active") {
     pageInfo { hasNextPage endCursor }
@@ -93,7 +111,10 @@ const ACTIVE_PRODUCTS_QUERY = `query ActiveStoreProducts($after: String) {
   }
 }`;
 const CHECKOUT_VARIANTS_QUERY = `query CheckoutVariants($ids: [ID!]!) {
-  shop { currencyCode }
+  shop {
+    currencyCode
+    ${CITY_PRICING_FIELD}
+  }
   nodes(ids: $ids) {
     ... on ProductVariant {
       id
@@ -162,8 +183,14 @@ type GraphQLResponse<T> = {
   errors?: GraphQLError[];
 };
 
+type CityPricingField = { value: string; updatedAt: string | null } | null;
+
+function readCityPricing(field: CityPricingField | undefined): CityPricingMatrix | null {
+  return parseCityPricingMatrix(field?.value, field?.updatedAt ?? null);
+}
+
 type CheckoutVariantResponse = {
-  shop: { currencyCode: string };
+  shop: { currencyCode: string; cityPricing?: CityPricingField };
   nodes: Array<{
     id: string;
     title: string;
@@ -250,6 +277,7 @@ type ShopifyCredentials = {
 type ActiveProductsResponse = {
   shop: {
     currencyCode: string;
+    cityPricing?: CityPricingField;
   };
   products: {
     pageInfo: { hasNextPage: boolean; endCursor: string | null };
@@ -873,7 +901,11 @@ function withRequiredScope(error: unknown, scope: string): never {
 export async function getShopifyCheckoutVariants(
   variantIds: string[],
   options: ShopifyRequestOptions = {},
-): Promise<{ currencyCode: string; variants: ShopifyCheckoutVariant[] }> {
+): Promise<{
+  currencyCode: string;
+  variants: ShopifyCheckoutVariant[];
+  cityPricing: CityPricingMatrix | null;
+}> {
   let result: CheckoutVariantResponse;
   try {
     result = await graphQL<CheckoutVariantResponse>(CHECKOUT_VARIANTS_QUERY, {
@@ -897,7 +929,11 @@ export async function getShopifyCheckoutVariants(
       availableForSale: variant.availableForSale && variant.product.status === "ACTIVE",
     }];
   });
-  return { currencyCode: result.shop.currencyCode, variants };
+  return {
+    currencyCode: result.shop.currencyCode,
+    variants,
+    cityPricing: readCityPricing(result.shop.cityPricing),
+  };
 }
 
 function checkoutSearchQuery(customerId: string, createdAt: Date): string {
@@ -1029,6 +1065,7 @@ export async function createShopifyPortalDraftOrder(input: {
   address: ShopifyOrderAddress;
   items: Array<{ variantId: string; quantity: number; unitPrice?: number }>;
   priceCity?: string;
+  priceAdjustmentPercent?: number;
 }, options: ShopifyRequestOptions = {}): Promise<string> {
   const nameParts = input.address.contactPersonName.trim().split(/\s+/);
   const provinceCodes: Record<string, string> = {
@@ -1075,6 +1112,12 @@ export async function createShopifyPortalDraftOrder(input: {
         customAttributes: [
           { key: "torq_checkout_key", value: input.checkoutKey },
           ...(input.priceCity ? [{ key: "torq_price_city", value: input.priceCity }] : []),
+          ...(input.priceAdjustmentPercent !== undefined
+            ? [{
+              key: "torq_price_adjustment",
+              value: `${input.priceAdjustmentPercent > 0 ? "+" : ""}${input.priceAdjustmentPercent}%`,
+            }]
+            : []),
         ],
       },
     }, options);
@@ -1108,8 +1151,27 @@ export async function completeShopifyPortalDraftOrder(
   }
 }
 
-export async function getActiveShopifyProducts(): Promise<ShopifyStoreProduct[]> {
+// The City-wise Pricing Matrix on its own, for pages that don't show prices.
+// Returns null when it has never been saved; throws when it is unreadable.
+export async function getShopifyCityPricingMatrix(
+  options: ShopifyRequestOptions = {},
+): Promise<CityPricingMatrix | null> {
+  const result = await graphQL<{ shop: { cityPricing?: CityPricingField } }>(
+    CITY_PRICING_QUERY,
+    {},
+    options,
+  );
+  return readCityPricing(result.shop.cityPricing);
+}
+
+// Active products with their Shopify prices, plus the City-wise Pricing Matrix
+// read in the same request.
+export async function getActiveShopifyCatalog(): Promise<{
+  products: ShopifyStoreProduct[];
+  cityPricing: CityPricingMatrix | null;
+}> {
   const products: ShopifyStoreProduct[] = [];
+  let cityPricing: CityPricingMatrix | null = null;
   let after: string | null = null;
   let hasNextPage = true;
 
@@ -1118,6 +1180,7 @@ export async function getActiveShopifyProducts(): Promise<ShopifyStoreProduct[]>
       ACTIVE_PRODUCTS_QUERY,
       { after },
     );
+    if (after === null) cityPricing = readCityPricing(result.shop.cityPricing);
 
     for (const product of result.products.nodes) {
       const variant = product.variants.nodes[0];
@@ -1161,5 +1224,5 @@ export async function getActiveShopifyProducts(): Promise<ShopifyStoreProduct[]>
       throw new Error("Shopify product pagination returned no cursor.");
     }
   }
-  return products;
+  return { products, cityPricing };
 }

@@ -17,24 +17,26 @@ type Values = {
 
 const OTHER_CITY = "__other";
 
-function initialCityChoice(city: string, pricedCities: string[]): string {
+function initialCityChoice(city: string, cityNames: string[]): string {
   const key = city.trim().replace(/\s+/g, " ").toLowerCase();
   if (!key) return "";
-  return pricedCities.find((name) => name.toLowerCase() === key) ?? OTHER_CITY;
+  return cityNames.find((name) => name.toLowerCase() === key) ?? OTHER_CITY;
 }
 
 export function AccountDetailsForm({
   initialValues,
   completed,
-  pricedCities = [],
+  cityChoices = [],
   cityLocked = false,
 }: {
   initialValues: Values;
   completed: boolean;
-  pricedCities?: string[];
+  // Cities from the City-wise Pricing Matrix in Shopify, by province.
+  cityChoices?: Array<{ province: string; cities: string[] }>;
   cityLocked?: boolean;
 }) {
-  const [cityChoice, setCityChoice] = useState(() => initialCityChoice(initialValues.city, pricedCities));
+  const cityNames = cityChoices.flatMap((group) => group.cities);
+  const [cityChoice, setCityChoice] = useState(() => initialCityChoice(initialValues.city, cityNames));
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
@@ -139,7 +141,7 @@ export function AccountDetailsForm({
       </div>
       <div className="field">
         <label htmlFor="city">City <span className="details-required">*</span></label>
-        {pricedCities.length === 0 ? (
+        {cityNames.length === 0 ? (
           <input id="city" name="city" maxLength={2000} required defaultValue={initialValues.city} placeholder="Lahore" aria-invalid={Boolean(fieldErrors.city)} aria-describedby={fieldErrors.city ? "city-error" : undefined} onChange={() => clearFieldError("city")} />
         ) : cityLocked ? (
           <>
@@ -151,12 +153,16 @@ export function AccountDetailsForm({
             <div className="province-select-wrap">
               <select id="city" name="city" required value={cityChoice} aria-invalid={Boolean(fieldErrors.city)} aria-describedby={fieldErrors.city ? "city-error" : "city-hint"} onChange={(event) => { setCityChoice(event.target.value); clearFieldError("city"); }}>
                 <option value="" disabled>Select city</option>
-                {pricedCities.map((name) => <option key={name} value={name}>{name}</option>)}
+                {cityChoices.map((group) => (
+                  <optgroup key={group.province} label={group.province}>
+                    {group.cities.map((name) => <option key={name} value={name}>{name}</option>)}
+                  </optgroup>
+                ))}
                 <option value={OTHER_CITY}>Other city</option>
               </select>
             </div>
             {cityChoice === OTHER_CITY && (
-              <input id="cityOther" name="cityOther" maxLength={2000} required defaultValue={initialCityChoice(initialValues.city, pricedCities) === OTHER_CITY ? initialValues.city : ""} placeholder="Type your city" aria-label="Your city" aria-invalid={Boolean(fieldErrors.city)} onChange={() => clearFieldError("city")} />
+              <input id="cityOther" name="cityOther" maxLength={2000} required defaultValue={initialCityChoice(initialValues.city, cityNames) === OTHER_CITY ? initialValues.city : ""} placeholder="Type your city" aria-label="Your city" aria-invalid={Boolean(fieldErrors.city)} onChange={() => clearFieldError("city")} />
             )}
             <span className="field-hint" id="city-hint">Prices are shown for your city.</span>
           </>
