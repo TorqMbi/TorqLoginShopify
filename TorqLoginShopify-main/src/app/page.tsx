@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { getCustomerHeaderCustomer, StoreFooter, StoreHeader } from "@/app/components/store-chrome";
+import { getCustomerHeaderCustomer, StoreHeader } from "@/app/components/store-chrome";
 import { BearingCarousel } from "@/app/components/bearing-carousel";
 
 export const metadata: Metadata = {
@@ -56,7 +56,6 @@ export default async function HomePage() {
           </section>
         </div>
       </main>
-      <StoreFooter />
     </>
   );
 }
