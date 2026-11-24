@@ -197,7 +197,7 @@ describe("changing city on the shop details form", () => {
     const approved = databaseFor({ status: "approved", city: "Lahore" });
     await expect(resolveDetailsCity(approved, customerId, "Lahore")).resolves.toEqual({ city: "Lahore" });
     await expect(resolveDetailsCity(approved, customerId, "Multan")).resolves.toEqual({
-      error: expect.stringContaining("couldn't check city prices"),
+      error: expect.stringContaining("couldn't change your city"),
     });
     await expect(resolveDetailsCity(databaseFor({ status: "pending" }), customerId, "Multan"))
       .resolves.toEqual({ city: "Multan" });

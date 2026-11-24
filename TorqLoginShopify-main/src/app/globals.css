@@ -1024,6 +1024,11 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
 .city-matrix-standard { margin-top: 14px; color: #a0a8b1; font-size: 12px; }
 .city-matrix-standard summary { color: #dfe2e4; cursor: pointer; }
 .city-matrix-standard p { margin: 8px 0 0; line-height: 1.6; }
+.city-preview-controls { display: flex; flex-wrap: wrap; align-items: flex-end; gap: 12px; margin: 14px 0 12px; }
+.city-preview-city { width: min(280px, 100%); margin: 0; }
+.city-preview-city span { color: #dfe2e4; font-size: 12px; font-weight: 600; }
+.city-preview-search { width: min(320px, 100%); }
+.city-preview-summary { margin: 0 0 12px; color: #dfe2e4; font-size: 13px; }
 
 @media (max-width: 760px) {
   .landing-home-shell {

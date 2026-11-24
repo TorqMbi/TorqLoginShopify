@@ -8,10 +8,12 @@ import type { ShopifyStoreProduct } from "@/lib/shopify";
 
 export const CITY_PRICING_NAMESPACE = "torq";
 export const CITY_PRICING_KEY = "city_pricing";
+// Customer-facing wording never mentions city pricing: customers only see
+// their final price as the normal selling price.
 export const CITY_LOCKED_MESSAGE =
-  "Your prices depend on your city, so it can't be changed after your account is approved. Please contact us on WhatsApp to change it.";
+  "Your city can't be changed after your account is approved. Please contact us on WhatsApp to change it.";
 export const CITY_PRICING_UNAVAILABLE_MESSAGE =
-  "City prices couldn't be loaded from Shopify. Please try again in a few minutes.";
+  "Prices couldn't be loaded right now. Your cart is safe; please try again in a few minutes.";
 
 // Adjustments outside this range are treated as a broken matrix rather than
 // charged, e.g. -100% would make products free.

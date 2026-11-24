@@ -201,6 +201,48 @@ describe("approved customer Shopify checkout", () => {
     ]);
   });
 
+  it("stops before charging when prices changed after the customer opened the store", async () => {
+    useMatrix([{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }]);
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 2 }],
+      expectedTotal: 74400,
+    }));
+
+    expect(response.status).toBe(409);
+    await expect(response.json()).resolves.toEqual({
+      error: "Prices have been updated since you opened the store. Please check your cart total and confirm again.",
+      code: "PRICES_CHANGED",
+    });
+    expect(mocks.createShopifyPortalDraftOrder).not.toHaveBeenCalled();
+    expect(orders.size).toBe(0);
+  });
+
+  it("places the order when the total the customer saw still matches", async () => {
+    useMatrix([{ name: "Lahore", province: "Punjab", group: "", adjustment: 10 }]);
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 2 }],
+      expectedTotal: 81840,
+    }));
+
+    expect(response.status).toBe(201);
+    expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
+    }), expect.anything());
+  });
+
+  it("refuses prices or a pricing city sent by the browser", async () => {
+    for (const body of [
+      { checkoutKey, items: [{ variantId: productVariant.variantId, quantity: 1, unitPrice: 1 }] },
+      { checkoutKey, items: [{ variantId: productVariant.variantId, quantity: 1 }], priceCity: "Multan" },
+      { checkoutKey, items: [{ variantId: productVariant.variantId, quantity: 1 }], expectedTotal: "1" },
+    ]) {
+      expect((await POST(request(body))).status).toBe(400);
+    }
+    expect(mocks.getShopifyCheckoutVariants).not.toHaveBeenCalled();
+  });
+
   it("stops the order, keeping the cart, when the matrix can't be read", async () => {
     mocks.getShopifyCheckoutVariants.mockRejectedValue(new CityPricingUnavailableError("not valid JSON"));
     const response = await POST(request({

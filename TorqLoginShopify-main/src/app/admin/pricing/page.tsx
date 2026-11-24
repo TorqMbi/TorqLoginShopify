@@ -1,5 +1,6 @@
 import { redirect } from "next/navigation";
 import { AdminHeader } from "@/app/components/admin-header";
+import { CityPricePreview } from "@/app/components/city-price-preview";
 import type { CityPricingMatrix } from "@/lib/city-pricing-rules";
 import { getShopifyCityPricingMatrix } from "@/lib/shopify";
 import { getStaffSession } from "@/lib/staff-auth";
@@ -77,6 +78,13 @@ export default async function CityPricingPage() {
             </dl>
           )}
         </section>
+
+        {matrix && matrix.cities.length > 0 && (
+          <CityPricePreview
+            initialCity={(adjusted[0] ?? matrix.cities[0]).name}
+            initialCities={matrix.cities.map(({ name, province, adjustmentPercent }) => ({ name, province, adjustmentPercent }))}
+          />
+        )}
 
         {matrix && (
           <section className="dashboard-card staff-add-card">

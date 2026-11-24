@@ -146,7 +146,7 @@ export function AccountDetailsForm({
         ) : cityLocked ? (
           <>
             <input id="city" name="city" readOnly value={initialValues.city} aria-describedby="city-hint" />
-            <span className="field-hint" id="city-hint">Your prices are based on this city. To change it, contact us on WhatsApp.</span>
+            <span className="field-hint" id="city-hint">To change your city, contact us on WhatsApp.</span>
           </>
         ) : (
           <>
@@ -164,7 +164,7 @@ export function AccountDetailsForm({
             {cityChoice === OTHER_CITY && (
               <input id="cityOther" name="cityOther" maxLength={2000} required defaultValue={initialCityChoice(initialValues.city, cityNames) === OTHER_CITY ? initialValues.city : ""} placeholder="Type your city" aria-label="Your city" aria-invalid={Boolean(fieldErrors.city)} onChange={() => clearFieldError("city")} />
             )}
-            <span className="field-hint" id="city-hint">Prices are shown for your city.</span>
+            <span className="field-hint" id="city-hint">Choose the city your shop is in.</span>
           </>
         )}
         {fieldErrors.city && <span className="field-error" id="city-error">{fieldErrors.city}</span>}

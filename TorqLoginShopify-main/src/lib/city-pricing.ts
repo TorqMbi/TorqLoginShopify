@@ -13,7 +13,7 @@ import { getShopifyCityPricingMatrix } from "@/lib/shopify";
 export * from "@/lib/city-pricing-rules";
 
 const CITY_CHECK_FAILED_MESSAGE =
-  "We couldn't check city prices right now, so your city wasn't changed. Please try again in a few minutes.";
+  "We couldn't change your city right now. Please try again in a few minutes.";
 
 export async function getCustomerCity(customerId: ObjectId): Promise<string> {
   const database = await getDatabase();
