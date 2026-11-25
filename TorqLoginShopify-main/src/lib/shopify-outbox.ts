@@ -8,6 +8,8 @@ import {
 } from "./db";
 import {
   ensureShopifyCustomer,
+  findShopifyCustomerByPhone,
+  getShopifyCustomerName,
   getShopifyCustomerTags,
   ShopifyCustomerNotFoundError,
   writeShopifyMetafields,
@@ -132,7 +134,8 @@ async function runSyncJob(
         existingShopifyTags = await getShopifyCustomerTags(shopifyCustomerId, options);
       } catch (error) {
         if (!(error instanceof ShopifyCustomerNotFoundError)) throw error;
-        shopifyCustomerId = undefined;
+        await deleteDeletedShopifyCustomer(database, customer._id);
+        return { succeeded: true };
       }
     }
     shopifyCustomerId ??= await ensureShopifyCustomer(
@@ -140,10 +143,16 @@ async function runSyncJob(
       details.contactPersonName || customer.username,
       options,
     );
+    const shopifyCustomerName = await getShopifyCustomerName(shopifyCustomerId, options);
 
     const linked = await customers.updateOne(
       { _id: customer._id, "shop_details.syncVersion": job.version },
-      { $set: { shopifyCustomerId } },
+      {
+        $set: {
+          shopifyCustomerId,
+          ...(shopifyCustomerName ? { shopifyCustomerName } : {}),
+        },
+      },
     );
     if (linked.matchedCount !== 1) return { succeeded: false };
     await writeShopifyMetafields(shopifyCustomerId, details, options);
@@ -218,6 +227,21 @@ export async function syncCustomerShopifyNow(
   };
 }
 
+async function deleteDeletedShopifyCustomer(
+  database: import("mongodb").Db,
+  customerId: ObjectId,
+): Promise<void> {
+  await Promise.all([
+    database.collection("auth_sessions").deleteMany({ customerId }),
+    database.collection("password_reset_requests").deleteMany({ customerId }),
+    database.collection("password_reset_codes").deleteMany({ customerId }),
+    database.collection("status_events").deleteMany({ customerId }),
+    database.collection("shopify_sync_jobs").deleteMany({ _id: customerId }),
+    database.collection("shopify_orders").deleteMany({ customerId }),
+  ]);
+  await database.collection<CustomerDocument>("customers").deleteOne({ _id: customerId });
+}
+
 async function reconcileShopifyStatus(
   database: Db,
 ): Promise<{ reconciled: number; failed: number }> {
@@ -226,8 +250,10 @@ async function reconcileShopifyStatus(
   const state = database.collection<{ _id: string; lastCustomerId?: ObjectId }>("shopify_reconciliation_state");
   const checkpoint = await state.findOne({ _id: "status-tags" });
   const baseFilter: Filter<CustomerDocument> = {
-    shopifyCustomerId: { $type: "string" as const, $ne: "" },
-    "shop_details.completedAt": { $exists: true },
+    $or: [
+      { shopifyCustomerId: { $type: "string" as const, $ne: "" } },
+      { "shop_details.status": { $in: ["approved", "blocked"] } },
+    ],
   };
   const customerFilter = {
     ...baseFilter,
@@ -235,9 +261,11 @@ async function reconcileShopifyStatus(
   };
   let batch = await customers.find(customerFilter, {
     projection: {
+      mobileNumber: 1,
       shopifyCustomerId: 1,
       "shop_details.status": 1,
       "shop_details.syncVersion": 1,
+      "shop_details.contactMobileNumber": 1,
     },
   })
     .sort({ _id: 1 })
@@ -253,6 +281,7 @@ async function reconcileShopifyStatus(
       baseFilter,
       {
         projection: {
+          mobileNumber: 1,
           shopifyCustomerId: 1,
           "shop_details.status": 1,
           "shop_details.syncVersion": 1,
@@ -267,8 +296,31 @@ async function reconcileShopifyStatus(
   let failed = 0;
 
   for (const customer of batch) {
-    if (!customer.shopifyCustomerId) continue;
+    if (!customer.shopifyCustomerId) {
+      const phone = customer.shop_details.contactMobileNumber || customer.mobileNumber;
+      if (!phone) continue;
+      const shopifyCustomerId = await findShopifyCustomerByPhone(phone).catch((error) => {
+        throw error;
+      });
+      if (!shopifyCustomerId) {
+        await deleteDeletedShopifyCustomer(database, customer._id);
+        reconciled += 1;
+        continue;
+      }
+      await customers.updateOne(
+        { _id: customer._id },
+        { $set: { shopifyCustomerId } },
+      );
+      customer.shopifyCustomerId = shopifyCustomerId;
+    }
     try {
+      const shopifyCustomerName = await getShopifyCustomerName(customer.shopifyCustomerId);
+      if (shopifyCustomerName) {
+        await customers.updateOne(
+          { _id: customer._id },
+          { $set: { shopifyCustomerName } },
+        );
+      }
       const tags = await getShopifyCustomerTags(customer.shopifyCustomerId);
       if (hasShopifyStatusTag(tags, customer.shop_details.status)) continue;
       await writeShopifyStatusTags(
@@ -298,8 +350,13 @@ async function reconcileShopifyStatus(
         createdAt: new Date(),
       });
       reconciled += 1;
-    } catch {
-      failed += 1;
+    } catch (error) {
+      if (error instanceof ShopifyCustomerNotFoundError) {
+        await deleteDeletedShopifyCustomer(database, customer._id);
+        reconciled += 1;
+      } else {
+        failed += 1;
+      }
     }
   }
   const lastCustomer = batch.at(-1);

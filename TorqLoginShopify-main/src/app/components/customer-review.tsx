@@ -9,6 +9,7 @@ type CustomerData = {
   id: string;
   username: string;
   accountMobileNumber: string;
+  shopifyCustomerName: string;
   status: AccountStatus;
   details: {
     contactPersonName: string;
@@ -136,7 +137,7 @@ export function CustomerReview({ customerId }: { customerId: string }) {
       <section className="dashboard-card customer-review-card">
         <div className="customer-review-heading">
           <div>
-            <h2>{detail.shopName || customer.username}</h2>
+            <h2>{customer.shopifyCustomerName || detail.shopName || customer.username}</h2>
             <p>{detail.contactPersonName || "Contact person not submitted"} · {detail.city || "City not submitted"}</p>
           </div>
           <span className={`status status-${customer.status}`}>{customer.status}</span>

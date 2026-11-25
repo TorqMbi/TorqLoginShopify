@@ -5,6 +5,7 @@ type Summary = {
   processed: number;
   succeeded: number;
   failed: number;
+  reconciled: number;
   errors: string[];
 };
 
@@ -12,6 +13,7 @@ const summary: Summary = {
   processed: 0,
   succeeded: 0,
   failed: 0,
+  reconciled: 0,
   errors: [],
 };
 
@@ -25,6 +27,7 @@ async function main(): Promise<void> {
     summary.processed = result.processed;
     summary.succeeded = result.succeeded;
     summary.failed = result.failed;
+    summary.reconciled = result.reconciled;
     summary.errors = result.errors;
     if (result.failed > 0 || result.errors.length > 0) exitCode = 1;
   } catch {

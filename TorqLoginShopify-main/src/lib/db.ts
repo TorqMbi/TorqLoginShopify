@@ -23,6 +23,7 @@ export type CustomerDocument = {
     syncVersion: number;
   };
   shopifyCustomerId?: string;
+  shopifyCustomerName?: string;
   createdAt: Date;
   sessionVersion?: number;
   passwordResetTokenHash?: string;

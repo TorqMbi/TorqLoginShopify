@@ -48,6 +48,7 @@ export async function GET(_request: Request, context: RouteContext) {
         id: customer._id.toString(),
         username: customer.username,
         accountMobileNumber: customer.mobileNumber,
+        shopifyCustomerName: customer.shopifyCustomerName ?? "",
         status: customer.shop_details.status,
         details: {
           contactPersonName: customer.shop_details.contactPersonName ?? "",

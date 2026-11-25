@@ -8,15 +8,20 @@ const mocks = vi.hoisted(() => ({
     findOne: vi.fn(),
     updateOne: vi.fn(),
     find: vi.fn(),
+    deleteOne: vi.fn(),
   },
   jobs: {
     findOneAndUpdate: vi.fn(),
     findOne: vi.fn(),
     updateOne: vi.fn(),
+    deleteMany: vi.fn(),
   },
+  deleteMany: vi.fn(),
   reconciliationState: { findOne: vi.fn(), updateOne: vi.fn() },
-  events: { insertOne: vi.fn() },
+  events: { insertOne: vi.fn(), deleteMany: vi.fn() },
   ensureShopifyCustomer: vi.fn(),
+  findShopifyCustomerByPhone: vi.fn(),
+  getShopifyCustomerName: vi.fn(),
   getShopifyCustomerTags: vi.fn(),
   writeShopifyMetafields: vi.fn(),
   writeShopifyStatusTags: vi.fn(),
@@ -30,6 +35,8 @@ const mocks = vi.hoisted(() => ({
 vi.mock("./db", () => ({ getDatabase: mocks.getDatabase }));
 vi.mock("./shopify", () => ({
   ensureShopifyCustomer: mocks.ensureShopifyCustomer,
+  findShopifyCustomerByPhone: mocks.findShopifyCustomerByPhone,
+  getShopifyCustomerName: mocks.getShopifyCustomerName,
   getShopifyCustomerTags: mocks.getShopifyCustomerTags,
   ShopifyCustomerNotFoundError: mocks.ShopifyCustomerNotFoundError,
   writeShopifyMetafields: mocks.writeShopifyMetafields,
@@ -69,18 +76,24 @@ describe("Shopify outbox worker", () => {
       if (name === "shopify_sync_jobs") return mocks.jobs;
       if (name === "status_events") return mocks.events;
       if (name === "shopify_reconciliation_state") return mocks.reconciliationState;
-      return {};
+      return { deleteMany: mocks.deleteMany };
     });
     mocks.customers.findOne.mockReset().mockResolvedValue(customer);
     mocks.customers.updateOne.mockReset().mockResolvedValue({ matchedCount: 1 });
+    mocks.customers.deleteOne.mockReset().mockResolvedValue({ deletedCount: 1 });
     mocks.customers.find.mockReset().mockReturnValue(cursor([]));
     mocks.jobs.findOneAndUpdate.mockReset();
     mocks.jobs.findOne.mockReset();
     mocks.jobs.updateOne.mockReset().mockResolvedValue({ matchedCount: 1 });
+    mocks.jobs.deleteMany.mockReset().mockResolvedValue({ deletedCount: 1 });
+    mocks.deleteMany.mockReset().mockResolvedValue({ deletedCount: 1 });
     mocks.events.insertOne.mockReset().mockResolvedValue({});
+    mocks.events.deleteMany.mockReset().mockResolvedValue({ deletedCount: 1 });
     mocks.reconciliationState.findOne.mockReset().mockResolvedValue(null);
     mocks.reconciliationState.updateOne.mockReset().mockResolvedValue({ matchedCount: 1 });
     mocks.ensureShopifyCustomer.mockReset().mockResolvedValue(customer.shopifyCustomerId);
+    mocks.findShopifyCustomerByPhone.mockReset().mockResolvedValue(customer.shopifyCustomerId);
+    mocks.getShopifyCustomerName.mockReset().mockResolvedValue("Contact Person");
     mocks.getShopifyCustomerTags.mockReset().mockResolvedValue(["vip", "blocked"]);
     mocks.writeShopifyMetafields.mockReset().mockResolvedValue(undefined);
     mocks.writeShopifyStatusTags.mockReset().mockResolvedValue(undefined);
@@ -115,7 +128,12 @@ describe("Shopify outbox worker", () => {
     expect(failureUpdate.$set.nextAttemptAt.getTime()).toBeGreaterThan(Date.now() + 20 * 60 * 1000);
     expect(mocks.customers.updateOne).toHaveBeenCalledWith(
       { _id: id, "shop_details.syncVersion": 4 },
-      { $set: { shopifyCustomerId: customer.shopifyCustomerId } },
+      {
+        $set: expect.objectContaining({
+          shopifyCustomerId: customer.shopifyCustomerId,
+          shopifyCustomerName: "Contact Person",
+        }),
+      },
     );
   });
 
@@ -140,7 +158,39 @@ describe("Shopify outbox worker", () => {
       newStatus: "approved",
       eventType: "reconciled",
     }));
-    expect(mocks.customers.updateOne).not.toHaveBeenCalled();
+    expect(mocks.customers.updateOne).toHaveBeenCalledWith(
+      { _id: id },
+      { $set: { shopifyCustomerName: "Contact Person" } },
+    );
+  });
+
+  it("deletes an approved unlinked portal account when no Shopify customer matches its phone", async () => {
+    const unlinkedCustomer = {
+      ...customer,
+      shopifyCustomerId: undefined,
+    };
+    mocks.jobs.findOneAndUpdate.mockResolvedValue(null);
+    mocks.customers.find.mockReturnValue(cursor([unlinkedCustomer]));
+    mocks.findShopifyCustomerByPhone.mockResolvedValueOnce(null);
+
+    const result = await runShopifyWorker();
+
+    expect(result.reconciled).toBe(1);
+    expect(mocks.customers.deleteOne).toHaveBeenCalledWith({ _id: id });
+  });
+
+  it("deletes a portal account when its linked Shopify customer was deleted", async () => {
+    mocks.jobs.findOneAndUpdate.mockResolvedValue(null);
+    mocks.customers.find.mockReturnValue(cursor([customer]));
+    mocks.getShopifyCustomerName.mockRejectedValueOnce(
+      new mocks.ShopifyCustomerNotFoundError(),
+    );
+
+    const result = await runShopifyWorker();
+
+    expect(result.reconciled).toBe(1);
+    expect(mocks.customers.deleteOne).toHaveBeenCalledWith({ _id: id });
+    expect(mocks.deleteMany).toHaveBeenCalledWith({ customerId: id });
   });
 
   it("counts completed sync jobs as succeeded", async () => {
@@ -192,8 +242,7 @@ describe("Shopify outbox worker", () => {
     expect(requestOptions.deadlineAt).toBeLessThanOrEqual(Date.now() + 20_000);
   });
 
-  it("recreates a deleted Shopify customer only for an explicit link-repair job", async () => {
-    const replacementId = "gid://shopify/Customer/84";
+  it("deletes the portal account when an explicit link-repair finds a deleted Shopify customer", async () => {
     mocks.jobs.findOneAndUpdate.mockResolvedValueOnce({
       _id: id,
       customerId: id,
@@ -208,27 +257,14 @@ describe("Shopify outbox worker", () => {
     mocks.getShopifyCustomerTags.mockRejectedValueOnce(
       new mocks.ShopifyCustomerNotFoundError(),
     );
-    mocks.ensureShopifyCustomer.mockResolvedValueOnce(replacementId);
 
     await expect(syncCustomerShopifyNow(id)).resolves.toEqual({
       state: "synced",
       lastError: "",
     });
 
-    expect(mocks.ensureShopifyCustomer).toHaveBeenCalledWith(
-      customer.shop_details.contactMobileNumber,
-      customer.shop_details.contactPersonName,
-      expect.objectContaining({ deadlineAt: expect.any(Number) }),
-    );
-    expect(mocks.customers.updateOne).toHaveBeenCalledWith(
-      { _id: id, "shop_details.syncVersion": 4 },
-      { $set: { shopifyCustomerId: replacementId } },
-    );
-    expect(mocks.writeShopifyMetafields).toHaveBeenCalledWith(
-      replacementId,
-      customer.shop_details,
-      expect.objectContaining({ deadlineAt: expect.any(Number) }),
-    );
+    expect(mocks.ensureShopifyCustomer).not.toHaveBeenCalled();
+    expect(mocks.customers.deleteOne).toHaveBeenCalledWith({ _id: id });
   });
 
   it("returns Pending Sync when another worker owns the customer's job", async () => {

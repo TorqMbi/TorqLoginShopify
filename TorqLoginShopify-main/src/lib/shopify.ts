@@ -27,6 +27,9 @@ const TOKEN_POLL_INTERVAL_MS = 100;
 const STATUS_QUERY = `query CustomerStatusTags($id: ID!) {
   customer(id: $id) { id tags }
 }`;
+const CUSTOMER_PROFILE_QUERY = `query ShopifyCustomerProfile($id: ID!) {
+  customer(id: $id) { id displayName firstName lastName phone }
+}`;
 const UPDATE_TAGS_MUTATION = `mutation UpdateCustomerStatusTags(
   $id: ID!,
   $tagsToRemove: [String!]!,
@@ -54,6 +57,12 @@ const CURRENT_APP_SCOPES_QUERY = `query CurrentAppScopes {
 const FIND_CUSTOMERS_QUERY = `query FindCustomersByPhone($query: String!) {
   customers(first: 50, query: $query) {
     nodes { id phone }
+  }
+}`;
+const LIST_CUSTOMERS_QUERY = `query ListCustomersForStatusCount($after: String) {
+  customers(first: 250, after: $after) {
+    pageInfo { hasNextPage endCursor }
+    nodes { id phone tags }
   }
 }`;
 const CREATE_CUSTOMER_MUTATION = `mutation CreateCustomer($input: CustomerInput!) {
@@ -726,6 +735,41 @@ function phoneDigits(phone: string): string {
   return phone.replace(/\D/g, "");
 }
 
+export async function getShopifyCustomerStatusCounts(
+  options: ShopifyRequestOptions = {},
+): Promise<{ pending: number; approved: number; blocked: number; total: number }> {
+  const counts = { pending: 0, approved: 0, blocked: 0, total: 0 };
+  let after: string | null = null;
+  do {
+    const result: {
+      customers: {
+        pageInfo: { hasNextPage: boolean; endCursor: string | null };
+        nodes: Array<{ id: string; phone: string | null; tags: string[] }>;
+      };
+    } = await graphQL(LIST_CUSTOMERS_QUERY, { after }, options);
+    counts.total += result.customers.nodes.length;
+    for (const customer of result.customers.nodes) {
+      if (customer.tags.includes("approved")) counts.approved += 1;
+      else if (customer.tags.includes("blocked")) counts.blocked += 1;
+      else if (customer.tags.includes("pending-verification")) counts.pending += 1;
+    }
+    after = result.customers.pageInfo.hasNextPage ? result.customers.pageInfo.endCursor : null;
+  } while (after);
+  return counts;
+}
+
+export async function findShopifyCustomerByPhone(
+  phone: string,
+  options: ShopifyRequestOptions = {},
+): Promise<string | null> {
+  const found = await graphQL<{
+    customers: { nodes: Array<{ id: string; phone: string | null }> };
+  }>(FIND_CUSTOMERS_QUERY, { query: `phone:"${phone}"` }, options);
+  return found.customers.nodes.find(
+    (customer) => customer.phone && phoneDigits(customer.phone) === phoneDigits(phone),
+  )?.id ?? null;
+}
+
 export async function ensureShopifyCustomer(
   phone: string,
   firstName: string,
@@ -850,6 +894,24 @@ export async function writeShopifyMetafields(
     }>(SET_METAFIELDS_MUTATION, { metafields }, options);
     throwUserErrors(result.metafieldsSet.userErrors);
   }
+}
+
+export async function getShopifyCustomerName(
+  customerId: string,
+  options: ShopifyRequestOptions = {},
+): Promise<string> {
+  const result = await graphQL<{
+    customer: {
+      displayName: string | null;
+      firstName: string | null;
+      lastName: string | null;
+    } | null;
+  }>(CUSTOMER_PROFILE_QUERY, { id: customerId }, options);
+  if (!result.customer) throw new ShopifyCustomerNotFoundError();
+  const customer = result.customer;
+  const displayName = customer.displayName?.trim();
+  if (displayName) return displayName;
+  return [customer.firstName?.trim(), customer.lastName?.trim()].filter(Boolean).join(" ");
 }
 
 export async function getShopifyCustomerTags(

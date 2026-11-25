@@ -1942,6 +1942,7 @@ body:has(.login-form) .signup-page {
 }
 .store-stepper button:first-child { color: #adb5bd; background: #30373e; }
 .store-stepper button:disabled { opacity: .48; cursor: not-allowed; }
+.store-stepper button:last-child { margin-left: auto; }
 .store-stepper > span { min-width: 16px; color: #eef1f3; font-size: 12px; font-weight: 700; text-align: center; }
 .store-stepper > small { color: #9ca8b1; font-size: 10px; }
 .store-details-button {
@@ -2037,7 +2038,7 @@ body:has(.login-form) .signup-page {
 }
 .store-dialog {
   position: relative;
-  width: min(100%, 700px);
+  width: min(100%, 540px);
   max-height: min(90dvh, 840px);
   overflow: auto;
   padding: 24px;
@@ -2093,7 +2094,7 @@ body:has(.login-form) .signup-page {
 }
 .store-dialog-total strong { color: #f1f3f4; font-size: 18px; }
 .store-dialog-view-cart {
-  width: min(100%, 315px);
+  width: 100%;
   min-height: 62px;
   margin: 18px auto 0;
   padding: 0 22px;
@@ -2181,14 +2182,14 @@ body:has(.login-form) .signup-page {
 .store-cart-drawer-item {
   padding: 12px 0;
   display: grid;
-  grid-template-columns: 60px minmax(0, 1fr);
+  grid-template-columns: 72px minmax(0, 1fr);
   align-items: start;
   gap: 12px;
   border-bottom: 1px solid #282e34;
 }
 .store-cart-product-image {
-  width: 60px;
-  height: 60px;
+  width: 72px;
+  height: 72px;
   border-radius: 5px;
   object-fit: cover;
   background: #edf0f2;
@@ -2264,37 +2265,39 @@ body:has(.login-form) .signup-page {
 @keyframes store-menu-in { from { transform: translateX(-100%); } to { transform: translateX(0); } }
 .store-menu-drawer { animation-name: store-menu-in; }
 .store-details-content { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
-.store-dialog-hero { display: grid; grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 10px; align-items: stretch; }
+.store-dialog-hero { display: grid; grid-template-columns: minmax(0, 1fr) minmax(205px, .9fr); gap: 12px; align-items: stretch; }
 .store-details-image {
   width: 100%;
-  height: clamp(200px, 32vh, 300px);
-  padding: 8px;
+  height: 220px;
+  box-sizing: border-box;
+  padding: 6px;
+  overflow: hidden;
   object-fit: contain;
   border: 1px solid #3b444c;
-  border-radius: 18px;
+  border-radius: 12px;
   background: #f4f6f7;
 }
 .store-dialog-hero-info, .store-dialog-product-details { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
-.store-dialog-hero-info { justify-content: flex-end; }
-.store-dialog-product-details > p:not(.store-dialog-total) { min-height: 48px; margin: 0; padding: 8px 14px; display: flex; align-items: center; justify-content: space-between; gap: 12px; border: 1px solid #414951; border-radius: 12px; background: #151a1f; color: #aab3bb; font-size: 15px; }
+.store-dialog-hero-info { justify-content: center; }
+.store-dialog-product-details { width: 100%; }
+.store-dialog-product-details > p:not(.store-dialog-total),
+.store-dialog-quantity,
+.store-dialog-total,
+.store-dialog-view-cart { width: 100%; box-sizing: border-box; }
+.store-dialog-product-details > p:not(.store-dialog-total) { min-height: 40px; margin: 0; padding: 6px 0; display: flex; align-items: center; justify-content: space-between; gap: 12px; border-bottom: 1px solid #343b42; color: #aab3bb; font-size: 15px; }
 .store-details-content p strong { color: #f1f3f4; }
 .store-dialog-stock {
-  min-height: 68px;
-  padding: 8px 14px;
-  display: grid;
-  grid-template-columns: max-content max-content;
+  min-height: 48px;
+  padding: 0;
+  display: flex;
   align-items: center;
   justify-content: start;
-  gap: 6px;
-  border: 0;
-  border-radius: 12px;
   color: #aab3bb;
   font-size: 15px;
 }
 .store-dialog-stock strong { color: #f1f3f4; text-align: right; }
 .store-dialog-stock-badge {
   display: inline-flex;
-  grid-column: 1 / -1;
   align-items: center;
   justify-content: center;
   justify-self: start;
@@ -2316,7 +2319,19 @@ body:has(.login-form) .signup-page {
 }
 .store-dialog-stock-badge.is-in-stock { color: #67e69b; background: #163d2b; }
 .store-dialog-stock-badge.is-out-of-stock { color: #fff; background: #c83243; }
-.store-dialog-quantity { border: 1px solid #414951; border-radius: 12px; background: #151a1f; padding: 5px 12px; }
+.store-dialog-meta-line {
+  min-height: 40px;
+  margin: 0;
+  padding: 6px 0;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+  border-bottom: 1px solid #343b42;
+  color: #aab3bb;
+  font-size: 15px;
+}
+.store-dialog-quantity { border: 0; border-bottom: 1px solid #343b42; border-radius: 0; background: transparent; padding: 5px 0; }
 .store-details-content .store-stepper { width: 140px; margin-top: 0; }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0,0,0,0); white-space: nowrap; clip-path: inset(50%); }
 
@@ -2363,8 +2378,17 @@ body:has(.login-form) .signup-page {
   .store-carton-label, .store-total-label { color: #ccd3d9; font-size: 10px; font-weight: 800; text-transform: uppercase; }
   .store-stepper-mobile { height: 43px; padding: 4px; gap: 5px; }
   .store-stepper-mobile button { width: 35px; height: 33px; flex-basis: 35px; border-radius: 9px; font-size: 20px; }
-  .store-stepper-mobile > span { min-width: 18px; font-size: 15px; }
-  .store-stepper-mobile > small { font-size: 10px; }
+  .store-stepper-mobile > .store-stepper-value {
+    min-width: 0;
+    flex: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 5px;
+    font-size: 15px;
+    text-align: center;
+  }
+  .store-stepper-mobile .store-stepper-value small { font-size: 10px; }
   .store-mobile-line-total { min-height: 43px; padding: 0 10px; display: flex; align-items: center; justify-content: space-between; border: 1px solid #4a535c; border-radius: 10px; background: #23292f; }
   .store-mobile-line-total span { color: #9eabb6; font-size: 11px; }
   .store-mobile-line-total strong { color: #f3f5f6; font-size: 16px; }
@@ -2397,39 +2421,68 @@ body:has(.login-form) .signup-page {
     right: 10px;
   }
   .store-details-content { gap: 9px; }
-  .store-dialog-hero { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); gap: 8px; }
+  .store-dialog-hero { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 8px; }
   .store-details-image {
     width: 100%;
-    height: 180px;
+    height: 160px;
     max-height: none;
-    padding: 5px;
+    padding: 4px;
     object-fit: contain;
-    border-radius: 14px;
+    border-radius: 12px;
     background: #f4f6f7;
   }
   .store-dialog-hero-info, .store-dialog-product-details { gap: 6px; }
   .store-dialog-product-details > p:not(.store-dialog-total) {
-    min-height: 42px;
-    padding: 7px 10px;
-    border-radius: 10px;
+    min-height: 36px;
+    padding: 5px 0;
     font-size: 12px;
   }
   .store-dialog-stock {
-    min-height: 64px;
-    padding: 7px 10px;
+    min-height: 36px;
+    padding: 0;
     font-size: 12px;
   }
   .store-dialog-stock-badge {
     min-height: 28px;
     padding: 4px 8px;
   }
+  .store-dialog-meta-line {
+    min-height: 42px;
+    padding: 7px 10px;
+    border-radius: 10px;
+    font-size: 12px;
+  }
+  .store-dialog-hero-info .store-dialog-meta-line {
+    min-height: 42px;
+    padding: 4px 0;
+    grid-template-columns: minmax(0, 1fr);
+    align-content: center;
+    gap: 2px;
+  }
+  .store-dialog-hero-info .store-dialog-meta-line > span {
+    font-size: 10px;
+    line-height: 1.2;
+  }
+  .store-dialog-hero-info .store-dialog-meta-line > strong {
+    font-size: 12px;
+    line-height: 1.2;
+    text-align: right;
+    white-space: nowrap;
+  }
   .store-dialog-quantity {
     min-height: 48px;
-    padding: 5px 8px 5px 10px;
-    border-radius: 10px;
+    padding: 5px 0;
   }
-  .store-dialog-quantity .store-stepper {
-    width: 118px;
+  .store-details-content .store-dialog-quantity .store-stepper {
+    width: 108px;
+    max-width: calc(100% - 72px);
+    box-sizing: border-box;
+    flex: 0 1 108px;
+  }
+  .store-details-content .store-dialog-quantity .store-stepper button {
+    width: 29px;
+    height: 29px;
+    flex-basis: 29px;
   }
   .store-dialog-total {
     min-height: 54px;

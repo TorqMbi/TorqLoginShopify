@@ -233,8 +233,13 @@ export function Storefront({ products, customer }: Props) {
         >
           −
         </button>
-        <span aria-live="polite">{quantity}</span>
-        {mobile && <small>ctn</small>}
+        {mobile ? (
+          <span className="store-stepper-value" aria-live="polite">
+            {quantity}<small>ctn</small>
+          </span>
+        ) : (
+          <span aria-live="polite">{quantity}</span>
+        )}
         <button
           type="button"
           aria-label={`Add one carton of ${product.title}`}
@@ -412,7 +417,6 @@ export function Storefront({ products, customer }: Props) {
                     {productImage(product, "store-cart-product-image")}
                     <div className="store-cart-item-info">
                       <strong>{product.title}</strong>
-                      {product.sku && <span>SKU: {product.sku}</span>}
                       <span>{productPrice(product.cartonPrice)} per carton</span>
                       <div className="store-cart-item-controls">
                         {stepper(product, true)}
@@ -465,17 +469,25 @@ export function Storefront({ products, customer }: Props) {
                 {productImage(selectedProduct, "store-details-image")}
                 <div className="store-dialog-hero-info">
                   <div className="store-dialog-stock">
-                    <span>Stock:</span>
-                    <strong>{selectedProduct.inventoryCartons} cartons</strong>
-                    <span className={`store-dialog-stock-badge ${selectedProduct.inventoryCartons > 0 ? "is-in-stock" : "is-out-of-stock"}`}>
-                      {selectedProduct.inventoryCartons > 0 ? "In Stock" : "Out of Stock"}
+                    <span
+                      className={`store-dialog-stock-badge ${selectedProduct.inventoryCartons > 0 ? "is-in-stock" : "is-out-of-stock"}`}
+                    >
+                      {selectedProduct.inventoryCartons > 0 ? "In stock" : "Out of stock"}
                     </span>
                   </div>
+                  <p className="store-dialog-meta-line">
+                    <span>Price per carton:</span>
+                    <strong>{productPrice(selectedProduct.cartonPrice)}</strong>
+                  </p>
+                  {selectedProduct.pricePerPiece !== null && (
+                    <p className="store-dialog-meta-line">
+                      <span>Price per piece:</span>
+                      <strong>{productPrice(selectedProduct.pricePerPiece)}</strong>
+                    </p>
+                  )}
                 </div>
               </div>
               <div className="store-dialog-product-details">
-                <p>Price per carton: <strong>{productPrice(selectedProduct.cartonPrice)}</strong></p>
-                {selectedProduct.pricePerPiece !== null && <p>Price per piece: <strong>{productPrice(selectedProduct.pricePerPiece)}</strong></p>}
                 {selectedProduct.piecesPerCarton !== null && <p>Pieces per carton: <strong>{selectedProduct.piecesPerCarton}</strong></p>}
                 <div className="store-dialog-quantity">
                   <span>Quantity:</span>

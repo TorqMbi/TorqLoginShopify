@@ -39,6 +39,7 @@ export async function GET(request: Request) {
       { "shop_details.contactPersonName": { $regex: escapedQuery, $options: "i" } },
       { "shop_details.contactMobileNumber": { $regex: escapedQuery, $options: "i" } },
       { "shop_details.city": { $regex: escapedQuery, $options: "i" } },
+      { shopifyCustomerName: { $regex: escapedQuery, $options: "i" } },
       { mobileNumber: { $regex: escapedQuery, $options: "i" } },
     ];
     if (normalizedMobile) {
@@ -64,6 +65,7 @@ export async function GET(request: Request) {
         projection: {
           username: 1,
           mobileNumber: 1,
+          shopifyCustomerName: 1,
           shop_details: 1,
           createdAt: 1,
         },
@@ -82,7 +84,7 @@ export async function GET(request: Request) {
       totalPages: Math.max(1, Math.ceil(total / pageSize)),
       customers: customers.map((customer) => ({
         id: customer._id.toString(),
-        shopName: customer.shop_details.shopName ?? "",
+        shopName: customer.shopifyCustomerName || customer.shop_details.shopName || "",
         contactPersonName: customer.shop_details.contactPersonName ?? "",
         city: customer.shop_details.city ?? "",
         mobileNumber: customer.shop_details.contactMobileNumber || customer.mobileNumber,
