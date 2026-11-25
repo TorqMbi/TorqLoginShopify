@@ -91,6 +91,7 @@ describe("approved customer Shopify checkout", () => {
         contactPersonName: "Jane Doe",
         shopName: "Bearing House",
         contactMobileNumber: "+923001234567",
+        alternateMobileNumber: "+923001234568",
         shopAddress: "Shop 4",
         detailedAddress: "Market Road",
         city: "Lahore",
@@ -295,6 +296,16 @@ describe("approved customer Shopify checkout", () => {
         totalCartons: 2,
         totalPrice: 400000,
         currencyCode: "PKR",
+        customer: {
+          contactPersonName: "Jane Doe",
+          shopName: "Bearing House",
+          contactMobileNumber: "+923001234567",
+          alternateMobileNumber: "+923001234568",
+          shopAddress: "Shop 4",
+          detailedAddress: "Market Road",
+          city: "Lahore",
+          province: "Punjab",
+        },
         items: [{
           variantId: productVariant.variantId,
           title: "6302-2RS",
@@ -383,7 +394,17 @@ describe("approved customer Shopify checkout", () => {
 
     expect(response.status).toBe(200);
     await expect(response.json()).resolves.toMatchObject({
-      order: { orderName: "#100", totalCartons: 1, totalPrice: 37200 },
+      order: {
+        orderName: "#100",
+        totalCartons: 1,
+        totalPrice: 37200,
+        customer: {
+          contactPersonName: "Jane Doe",
+          shopName: "Bearing House",
+          contactMobileNumber: "+923001234567",
+          alternateMobileNumber: "+923001234568",
+        },
+      },
     });
     expect(mocks.createShopifyPortalDraftOrder).not.toHaveBeenCalled();
   });

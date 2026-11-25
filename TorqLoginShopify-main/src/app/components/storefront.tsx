@@ -27,6 +27,16 @@ type OrderConfirmation = {
   totalCartons: number;
   totalPrice: number;
   currencyCode: string;
+  customer: {
+    contactPersonName: string;
+    shopName: string;
+    contactMobileNumber: string;
+    alternateMobileNumber?: string;
+    shopAddress: string;
+    detailedAddress: string;
+    city: string;
+    province: string;
+  };
   items: Array<{
     title: string;
     sku: string;
@@ -51,11 +61,17 @@ function getPaymentRequestMessage(order: OrderConfirmation): string {
     const lineTotal = unitPrice * quantity;
     return `- ${itemName}: ${quantity} carton(s) x ${order.currencyCode} ${formatPrice(unitPrice)} = ${order.currencyCode} ${formatPrice(lineTotal)}`;
   });
+  const { customer } = order;
   const message = [
     "Assalam-o-Alaikum, please confirm my order and share the official payment details.",
     "",
     "PRO FORMA ORDER SUMMARY",
     `Order: ${order.orderName}`,
+    `Name: ${customer.contactPersonName}`,
+    `Shop: ${customer.shopName}`,
+    `Mobile / WhatsApp: ${customer.contactMobileNumber}`,
+    ...(customer.alternateMobileNumber ? [`Alternate mobile: ${customer.alternateMobileNumber}`] : []),
+    `Delivery address: ${customer.shopAddress}, ${customer.detailedAddress}, ${customer.city}, ${customer.province}`,
     ...(itemLines.length > 0 ? itemLines : ["Order items: please refer to the order number above."]),
     `Total cartons: ${order.totalCartons}`,
     `Order total: ${order.currencyCode} ${formatPrice(order.totalPrice)}`,
@@ -86,6 +102,7 @@ export function Storefront({ products, customer }: Props) {
   const [checkoutKey, setCheckoutKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
+  const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ShopifyStoreProduct | null>(null);
   const [bannerIndex, setBannerIndex] = useState(0);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -131,13 +148,14 @@ export function Storefront({ products, customer }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!cartOpen && !selectedProduct) return;
+    if (!cartOpen && !selectedProduct && !orderConfirmation) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setCartOpen(false);
         setSelectedProduct(null);
+        setOrderConfirmation(null);
       }
     }
     window.addEventListener("keydown", closeOnEscape);
@@ -145,7 +163,7 @@ export function Storefront({ products, customer }: Props) {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [cartOpen, selectedProduct]);
+  }, [cartOpen, orderConfirmation, selectedProduct]);
 
   useEffect(() => {
     setCheckoutKey(window.localStorage.getItem(CHECKOUT_KEY_STORAGE_KEY));
@@ -237,7 +255,8 @@ export function Storefront({ products, customer }: Props) {
       setCheckoutKey(null);
       window.localStorage.removeItem(CHECKOUT_KEY_STORAGE_KEY);
       window.localStorage.setItem(CART_STORAGE_KEY, "{}");
-      window.location.assign(getPaymentDetailsWhatsAppUrl(result.order));
+      setCartOpen(false);
+      setOrderConfirmation(result.order);
     } catch (error) {
       setCheckoutError(
         error instanceof Error
@@ -484,6 +503,72 @@ export function Storefront({ products, customer }: Props) {
               </button>
             </footer>
           </aside>
+        </div>
+      )}
+
+      {orderConfirmation && (
+        <div
+          className="store-dialog-backdrop"
+          onMouseDown={(event) => {
+            if (event.target === event.currentTarget) setOrderConfirmation(null);
+          }}
+        >
+          <section
+            className="store-dialog store-order-confirmation"
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="store-order-confirmation-title"
+          >
+            <button
+              className="store-dialog-close"
+              type="button"
+              onClick={() => setOrderConfirmation(null)}
+              aria-label="Close order confirmation"
+            >
+              ×
+            </button>
+            <h2 id="store-order-confirmation-title">Complete Your Order</h2>
+            <p className="store-order-subtitle">Review your order and confirm your delivery details.</p>
+            <p className="store-order-number">Order {orderConfirmation.orderName}</p>
+            <section className="store-order-review" aria-label="Order summary">
+              <h3>1. Order Summary</h3>
+              <dl className="store-order-summary">
+                <div><dt>Total Products</dt><dd>{orderConfirmation.items.length}</dd></div>
+                <div><dt>Total Cartons</dt><dd>{orderConfirmation.totalCartons}</dd></div>
+                <div className="store-order-summary-total">
+                  <dt>Total Payment</dt>
+                  <dd>Rs {formatPrice(orderConfirmation.totalPrice)}</dd>
+                </div>
+              </dl>
+            </section>
+            <section className="store-order-review" aria-label="Customer and delivery details">
+              <h3>2. Customer Information</h3>
+              <dl>
+                <div><dt>Customer Name</dt><dd>{orderConfirmation.customer.contactPersonName}</dd></div>
+                <div><dt>Mobile / WhatsApp</dt><dd>{orderConfirmation.customer.contactMobileNumber}</dd></div>
+                {orderConfirmation.customer.alternateMobileNumber && (
+                  <div><dt>Alternate mobile</dt><dd>{orderConfirmation.customer.alternateMobileNumber}</dd></div>
+                )}
+                <div><dt>Shop Name</dt><dd>{orderConfirmation.customer.shopName}</dd></div>
+                <div><dt>City</dt><dd>{orderConfirmation.customer.city}, {orderConfirmation.customer.province}</dd></div>
+                <div>
+                  <dt>Delivery address</dt>
+                  <dd>{orderConfirmation.customer.shopAddress}, {orderConfirmation.customer.detailedAddress}</dd>
+                </div>
+              </dl>
+              <p className="store-order-account-hint">Your details are automatically retrieved from your account.</p>
+            </section>
+            <a
+              className="store-order-whatsapp-button"
+              href={getPaymentDetailsWhatsAppUrl(orderConfirmation)}
+              target="_blank"
+              rel="noopener noreferrer"
+            >
+              <WhatsAppIcon />
+              Send Order to Our WhatsApp
+            </a>
+            <p className="store-order-whatsapp-hint">Send your order on WhatsApp to receive payment details. We’ll process your order after your payment is confirmed.</p>
+          </section>
         </div>
       )}
 

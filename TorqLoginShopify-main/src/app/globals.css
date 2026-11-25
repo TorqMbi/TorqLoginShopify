@@ -2049,6 +2049,56 @@ body:has(.login-form) .signup-page {
   box-shadow: 0 25px 80px rgba(0,0,0,.5);
 }
 .store-dialog h2 { margin: 0 44px 14px 0; font-size: 22px; }
+.store-order-confirmation {
+  width: min(100%, 720px);
+  padding: 20px;
+  border: 1px solid #dedede;
+  border-radius: 20px;
+  color: #171717;
+  background: #fff;
+}
+.store-order-confirmation h2 {
+  margin: 0 40px 4px;
+  color: #171717;
+  text-align: center;
+  font-size: 19px;
+}
+.store-order-confirmation .store-dialog-close {
+  color: #333;
+  background: #f0f0f0;
+}
+.store-order-subtitle,
+.store-order-number { text-align: center; }
+.store-order-subtitle { margin: 0; color: #666; font-size: 13px; }
+.store-order-number { margin: 8px 0 0; color: #666; font-size: 12px; }
+.store-order-review { margin-top: 18px; padding-top: 18px; border-top: 1px solid #e8e8e8; }
+.store-order-review h3 { margin: 0 0 12px; font-size: 15px; }
+.store-order-review dl { margin: 0; display: grid; gap: 10px; }
+.store-order-review dl > div { display: flex; justify-content: space-between; gap: 16px; }
+.store-order-review dt { color: #666; }
+.store-order-review dd { margin: 0; text-align: right; overflow-wrap: anywhere; }
+.store-order-summary-total { align-items: baseline; font-weight: 700; }
+.store-order-summary-total dt { color: #171717; }
+.store-order-summary-total dd { color: #087c36; font-size: 21px; font-weight: 700; }
+.store-order-account-hint { margin: 10px 0 0; color: #666; font-size: 12px; }
+.store-order-whatsapp-hint { color: #666; font-size: 12px; line-height: 1.5; text-align: center; }
+.store-order-whatsapp-button {
+  min-height: 54px;
+  margin-top: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  border-radius: 12px;
+  color: #fff;
+  background: #16a454;
+  font-size: 17px;
+  font-weight: 800;
+  text-decoration: none;
+}
+.store-order-whatsapp-button:hover { background: #138b47; }
+.store-order-whatsapp-button svg { width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.8; }
+.store-order-whatsapp-hint { margin: 10px 0 0; }
 .store-dialog-close {
   position: absolute;
   top: 13px;

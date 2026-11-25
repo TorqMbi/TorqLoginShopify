@@ -106,13 +106,26 @@ function hashItems(items: CheckoutLine[]): string {
   return createHash("sha256").update(canonical).digest("hex");
 }
 
-function getCompletedResponse(order: ShopifyOrderDocument) {
+function getCompletedResponse(
+  order: ShopifyOrderDocument,
+  customer: {
+    contactPersonName: string;
+    shopName: string;
+    contactMobileNumber: string;
+    alternateMobileNumber?: string;
+    shopAddress: string;
+    detailedAddress: string;
+    city: string;
+    province: string;
+  },
+) {
   return {
     orderName: order.orderName,
     totalCartons: order.totalCartons,
     totalPrice: order.totalPrice,
     currencyCode: order.currencyCode,
     items: order.items ?? [],
+    customer,
   };
 }
 
@@ -325,6 +338,16 @@ export async function POST(request: Request) {
     ) {
       return NextResponse.json({ error: "Complete your shop details before placing an order." }, { status: 409 });
     }
+    const orderCustomer = {
+      contactPersonName: details.contactPersonName,
+      shopName: details.shopName,
+      contactMobileNumber: details.contactMobileNumber,
+      ...(details.alternateMobileNumber ? { alternateMobileNumber: details.alternateMobileNumber } : {}),
+      shopAddress: details.shopAddress,
+      detailedAddress: details.detailedAddress,
+      city: details.city,
+      province: details.province,
+    };
     const orderCollection = database.collection<ShopifyOrderDocument>("shopify_orders");
     const shopifyOptions: ShopifyRequestOptions = {
       deadlineAt: Date.now() + SHOPIFY_CHECKOUT_TIMEOUT_MS,
@@ -340,7 +363,7 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: "Your cart changed. Please start checkout again." }, { status: 409 });
       }
       if (previousIntent.state === "completed") {
-        return NextResponse.json({ order: getCompletedResponse(previousIntent) }, { status: 200 });
+        return NextResponse.json({ order: getCompletedResponse(previousIntent, orderCustomer) }, { status: 200 });
       }
     }
 
@@ -385,7 +408,7 @@ export async function POST(request: Request) {
       if (error instanceof CheckoutError && error.message === "ORDER_ALREADY_COMPLETED") {
         const completed = await orderCollection.findOne({ _id: intentId }) as ShopifyOrderDocument | null;
         if (completed) {
-          return NextResponse.json({ order: getCompletedResponse(completed) }, { status: 200 });
+          return NextResponse.json({ order: getCompletedResponse(completed, orderCustomer) }, { status: 200 });
         }
       }
       throw error;
@@ -549,7 +572,9 @@ export async function POST(request: Request) {
       totalCartons,
       new Date(),
     );
-    return NextResponse.json({ order: response }, { status: 201 });
+    return NextResponse.json({
+      order: { ...response, customer: orderCustomer },
+    }, { status: 201 });
   } catch (error) {
     if (intent && leaseId) {
       const scopeResponse = shopifyScopeError(error);
