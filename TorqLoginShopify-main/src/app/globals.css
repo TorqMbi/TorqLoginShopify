@@ -2080,7 +2080,6 @@ body:has(.login-form) .signup-page {
 .store-order-summary-total { align-items: baseline; font-weight: 700; }
 .store-order-summary-total dt { color: #171717; }
 .store-order-summary-total dd { color: #087c36; font-size: 21px; font-weight: 700; }
-.store-order-account-hint { margin: 10px 0 0; color: #666; font-size: 12px; }
 .store-order-whatsapp-hint { color: #666; font-size: 12px; line-height: 1.5; text-align: center; }
 .store-order-whatsapp-button {
   min-height: 54px;

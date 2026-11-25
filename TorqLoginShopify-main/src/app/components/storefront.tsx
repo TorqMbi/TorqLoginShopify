@@ -528,7 +528,7 @@ export function Storefront({ products, customer }: Props) {
               ×
             </button>
             <h2 id="store-order-confirmation-title">Complete Your Order</h2>
-            <p className="store-order-subtitle">Review your order and confirm your delivery details.</p>
+            <p className="store-order-subtitle">Review your order and send it on WhatsApp to get payment details.</p>
             <p className="store-order-number">Order {orderConfirmation.orderName}</p>
             <section className="store-order-review" aria-label="Order summary">
               <h3>1. Order Summary</h3>
@@ -540,23 +540,6 @@ export function Storefront({ products, customer }: Props) {
                   <dd>Rs {formatPrice(orderConfirmation.totalPrice)}</dd>
                 </div>
               </dl>
-            </section>
-            <section className="store-order-review" aria-label="Customer and delivery details">
-              <h3>2. Customer Information</h3>
-              <dl>
-                <div><dt>Customer Name</dt><dd>{orderConfirmation.customer.contactPersonName}</dd></div>
-                <div><dt>Mobile / WhatsApp</dt><dd>{orderConfirmation.customer.contactMobileNumber}</dd></div>
-                {orderConfirmation.customer.alternateMobileNumber && (
-                  <div><dt>Alternate mobile</dt><dd>{orderConfirmation.customer.alternateMobileNumber}</dd></div>
-                )}
-                <div><dt>Shop Name</dt><dd>{orderConfirmation.customer.shopName}</dd></div>
-                <div><dt>City</dt><dd>{orderConfirmation.customer.city}, {orderConfirmation.customer.province}</dd></div>
-                <div>
-                  <dt>Delivery address</dt>
-                  <dd>{orderConfirmation.customer.shopAddress}, {orderConfirmation.customer.detailedAddress}</dd>
-                </div>
-              </dl>
-              <p className="store-order-account-hint">Your details are automatically retrieved from your account.</p>
             </section>
             <a
               className="store-order-whatsapp-button"
