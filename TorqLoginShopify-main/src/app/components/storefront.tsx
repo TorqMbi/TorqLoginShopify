@@ -15,6 +15,7 @@ type Props = {
 
 const CART_STORAGE_KEY = "torq-cart-v1";
 const CHECKOUT_KEY_STORAGE_KEY = "torq-checkout-key-v1";
+const WHATSAPP_SUPPORT_NUMBER = "923214073811";
 const STORE_BANNER_IMAGES = [
   { src: "/image1.jpg", alt: "TORQ steel ball bearing" },
   { src: "/image2.jpg", alt: "TORQ branded bearing" },
@@ -26,6 +27,12 @@ type OrderConfirmation = {
   totalCartons: number;
   totalPrice: number;
   currencyCode: string;
+  items: Array<{
+    title: string;
+    sku: string;
+    quantity: number;
+    unitPrice: number;
+  }>;
 };
 
 function formatPrice(amount: number): string {
@@ -36,6 +43,29 @@ function formatPrice(amount: number): string {
 
 function productPrice(amount: number | null): string {
   return amount === null ? "Price unavailable" : `Rs ${formatPrice(amount)}`;
+}
+
+function getPaymentRequestMessage(order: OrderConfirmation): string {
+  const itemLines = order.items.map(({ title, sku, quantity, unitPrice }) => {
+    const itemName = sku ? `${title} (${sku})` : title;
+    const lineTotal = unitPrice * quantity;
+    return `- ${itemName}: ${quantity} carton(s) x ${order.currencyCode} ${formatPrice(unitPrice)} = ${order.currencyCode} ${formatPrice(lineTotal)}`;
+  });
+  const message = [
+    "Assalam-o-Alaikum, please confirm my order and share the official payment details.",
+    "",
+    "PRO FORMA ORDER SUMMARY",
+    `Order: ${order.orderName}`,
+    ...(itemLines.length > 0 ? itemLines : ["Order items: please refer to the order number above."]),
+    `Total cartons: ${order.totalCartons}`,
+    `Order total: ${order.currencyCode} ${formatPrice(order.totalPrice)}`,
+    "Payment status: Pending (not paid).",
+  ].join("\n");
+  return message;
+}
+
+function getPaymentDetailsWhatsAppUrl(order: OrderConfirmation): string {
+  return `https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${encodeURIComponent(getPaymentRequestMessage(order))}`;
 }
 
 function WhatsAppIcon() {
@@ -56,7 +86,6 @@ export function Storefront({ products, customer }: Props) {
   const [checkoutKey, setCheckoutKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
-  const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
   const [selectedProduct, setSelectedProduct] = useState<ShopifyStoreProduct | null>(null);
   const [bannerIndex, setBannerIndex] = useState(0);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -204,12 +233,11 @@ export function Storefront({ products, customer }: Props) {
         throw new Error(result.error ?? "The order could not be confirmed. Your cart is safe.");
       }
 
-      setOrderConfirmation(result.order);
-      setCartOpen(false);
       setQuantities({});
       setCheckoutKey(null);
       window.localStorage.removeItem(CHECKOUT_KEY_STORAGE_KEY);
       window.localStorage.setItem(CART_STORAGE_KEY, "{}");
+      window.location.assign(getPaymentDetailsWhatsAppUrl(result.order));
     } catch (error) {
       setCheckoutError(
         error instanceof Error
@@ -525,24 +553,6 @@ export function Storefront({ products, customer }: Props) {
         </div>
       )}
 
-      {orderConfirmation && (
-        <div className="store-drawer-backdrop store-order-confirmation-backdrop">
-          <section className="store-order-confirmation" role="dialog" aria-modal="true" aria-labelledby="order-confirmed-title">
-            <h1 id="order-confirmed-title">Order confirmed</h1>
-            <p className="store-confirmed-order-number">Order {orderConfirmation.orderName}</p>
-            <div className="store-confirmed-summary">
-              <span>Total cartons</span>
-              <strong>{orderConfirmation.totalCartons}</strong>
-              <span>Total amount</span>
-              <strong>{orderConfirmation.currencyCode} {formatPrice(orderConfirmation.totalPrice)}</strong>
-            </div>
-            <a href="https://wa.me/923214073811" target="_blank" rel="noopener noreferrer">
-              WhatsApp support
-            </a>
-            <button type="button" onClick={() => setOrderConfirmation(null)}>Continue shopping</button>
-          </section>
-        </div>
-      )}
     </main>
   );
 }

@@ -112,6 +112,7 @@ function getCompletedResponse(order: ShopifyOrderDocument) {
     totalCartons: order.totalCartons,
     totalPrice: order.totalPrice,
     currencyCode: order.currencyCode,
+    items: order.items ?? [],
   };
 }
 
@@ -160,6 +161,7 @@ async function saveCompletedOrder(
     totalCartons,
     totalPrice: order.totalPrice,
     currencyCode: order.currencyCode,
+    items: lineItems,
   };
 }
 

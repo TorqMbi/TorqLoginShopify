@@ -295,6 +295,13 @@ describe("approved customer Shopify checkout", () => {
         totalCartons: 2,
         totalPrice: 400000,
         currencyCode: "PKR",
+        items: [{
+          variantId: productVariant.variantId,
+          title: "6302-2RS",
+          sku: "6302-2RS",
+          quantity: 2,
+          unitPrice: 200000,
+        }],
       },
     });
     expect(mocks.getShopifyCheckoutVariants).toHaveBeenCalledWith(
