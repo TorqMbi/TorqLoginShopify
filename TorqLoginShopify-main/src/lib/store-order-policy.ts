@@ -1,0 +1,1 @@
+export const MINIMUM_ORDER_TOTAL = 200_000;

@@ -5,6 +5,7 @@ import { useRouter } from "next/navigation";
 import { useEffect, useMemo, useRef, useState } from "react";
 import { CustomerHeader } from "@/app/components/customer-header";
 import type { CustomerHeaderCustomer } from "@/lib/customer-header";
+import { MINIMUM_ORDER_TOTAL } from "@/lib/store-order-policy";
 import type { ShopifyStoreProduct } from "@/lib/shopify";
 
 type Props = {
@@ -167,7 +168,7 @@ export function Storefront({ products, customer }: Props) {
   }
 
   async function confirmOrder() {
-    if (checkoutSubmitting || cartItems.length === 0) return;
+    if (checkoutSubmitting || cartItems.length === 0 || totalAmount < MINIMUM_ORDER_TOTAL) return;
     setCheckoutError("");
     setCheckoutSubmitting(true);
     const activeCheckoutKey = checkoutKey ?? window.crypto.randomUUID();
@@ -435,11 +436,16 @@ export function Storefront({ products, customer }: Props) {
                 <span>{totalCartons} {totalCartons === 1 ? "carton" : "cartons"}</span>
                 <strong>Rs {formatPrice(totalAmount)}</strong>
               </div>
+              {totalAmount < MINIMUM_ORDER_TOTAL && (
+                <p className="store-minimum-order-notice" role="status">
+                  Minimum order: Rs {formatPrice(MINIMUM_ORDER_TOTAL)}. Add Rs {formatPrice(MINIMUM_ORDER_TOTAL - totalAmount)} more to continue.
+                </p>
+              )}
               {checkoutError && <p className="store-checkout-error" role="alert">{checkoutError}</p>}
               <button
                 className="store-confirm-order"
                 type="button"
-                disabled={checkoutSubmitting || cartItems.length === 0}
+                disabled={checkoutSubmitting || cartItems.length === 0 || totalAmount < MINIMUM_ORDER_TOTAL}
                 onClick={confirmOrder}
               >
                 {checkoutSubmitting ? "Confirming order…" : "Confirm Order"}

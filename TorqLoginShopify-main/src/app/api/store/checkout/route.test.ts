@@ -58,7 +58,7 @@ const productVariant = {
   variantId: "gid://shopify/ProductVariant/42",
   title: "6302-2RS",
   sku: "6302-2RS",
-  unitPrice: 37200,
+  unitPrice: 200000,
   inventoryQuantity: 4,
   availableForSale: true,
 };
@@ -139,7 +139,7 @@ describe("approved customer Shopify checkout", () => {
     mocks.completeShopifyPortalDraftOrder.mockResolvedValue({
       orderId: "gid://shopify/Order/100",
       orderName: "#100",
-      totalPrice: 74400,
+      totalPrice: 200000,
       currencyCode: "PKR",
     });
     mocks.findShopifyPortalCheckout.mockResolvedValue(null);
@@ -163,16 +163,16 @@ describe("approved customer Shopify checkout", () => {
 
     expect(response.status).toBe(201);
     expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 220000 }],
       priceCity: "Lahore",
       priceAdjustmentPercent: 10,
     }), expect.anything());
     expect([...orders.values()][0].items).toEqual([
-      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 40920 }),
+      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 220000 }),
     ]);
   });
 
-  it("charges the Shopify price when the shop's city isn't in the matrix", async () => {
+  it("accepts an order exactly at the minimum with Shopify pricing", async () => {
     useMatrix([{ name: "Karachi", province: "Sindh", group: "", adjustment: 10 }]);
     const response = await POST(request({
       checkoutKey,
@@ -180,11 +180,12 @@ describe("approved customer Shopify checkout", () => {
     }));
 
     expect(response.status).toBe(201);
+    expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledOnce();
     const order = mocks.createShopifyPortalDraftOrder.mock.calls[0][0];
     expect(order.items).toEqual([{ variantId: productVariant.variantId, quantity: 1 }]);
     expect(order).not.toHaveProperty("priceCity");
     expect([...orders.values()][0].items).toEqual([
-      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 37200 }),
+      expect.objectContaining({ variantId: productVariant.variantId, unitPrice: 200000 }),
     ]);
   });
 
@@ -206,7 +207,7 @@ describe("approved customer Shopify checkout", () => {
     const response = await POST(request({
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 2 }],
-      expectedTotal: 74400,
+      expectedTotal: 400000,
     }));
 
     expect(response.status).toBe(409);
@@ -223,12 +224,12 @@ describe("approved customer Shopify checkout", () => {
     const response = await POST(request({
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 2 }],
-      expectedTotal: 81840,
+      expectedTotal: 440000,
     }));
 
     expect(response.status).toBe(201);
     expect(mocks.createShopifyPortalDraftOrder).toHaveBeenCalledWith(expect.objectContaining({
-      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 40920 }],
+      items: [{ variantId: productVariant.variantId, quantity: 2, unitPrice: 220000 }],
     }), expect.anything());
   });
 
@@ -256,7 +257,32 @@ describe("approved customer Shopify checkout", () => {
     expect(orders.size).toBe(0);
   });
 
+  it("rejects orders below Rs 200,000 before creating a draft", async () => {
+    mocks.getShopifyCheckoutVariants.mockResolvedValue({
+      currencyCode: "PKR",
+      variants: [{ ...productVariant, unitPrice: 199999 }],
+      cityPricing: null,
+    });
+    const response = await POST(request({
+      checkoutKey,
+      items: [{ variantId: productVariant.variantId, quantity: 1 }],
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toEqual({
+      error: "Minimum order value is Rs 200,000. Please add more items to continue.",
+    });
+    expect(mocks.createShopifyPortalDraftOrder).not.toHaveBeenCalled();
+    expect(orders.size).toBe(0);
+  });
+
   it("uses only server-validated variants and saves the real Shopify order", async () => {
+    mocks.completeShopifyPortalDraftOrder.mockResolvedValue({
+      orderId: "gid://shopify/Order/100",
+      orderName: "#100",
+      totalPrice: 400000,
+      currencyCode: "PKR",
+    });
     const response = await POST(request({
       checkoutKey,
       items: [{ variantId: productVariant.variantId, quantity: 2 }],
@@ -267,7 +293,7 @@ describe("approved customer Shopify checkout", () => {
       order: {
         orderName: "#100",
         totalCartons: 2,
-        totalPrice: 74400,
+        totalPrice: 400000,
         currencyCode: "PKR",
       },
     });
@@ -287,12 +313,12 @@ describe("approved customer Shopify checkout", () => {
       state: "completed",
       shopifyOrderId: "gid://shopify/Order/100",
       orderName: "#100",
-      totalPrice: 74400,
+      totalPrice: 400000,
       totalCartons: 2,
       items: [{
         variantId: productVariant.variantId,
         quantity: 2,
-        unitPrice: 37200,
+        unitPrice: 200000,
       }],
     });
   });

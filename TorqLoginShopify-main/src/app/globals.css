@@ -2225,6 +2225,7 @@ body:has(.login-form) .signup-page {
 }
 .store-confirm-order { border: 0; color: white; background: #168a51; }
 .store-confirm-order:disabled { opacity: .55; cursor: not-allowed; }
+.store-minimum-order-notice { margin: 0 0 12px; color: #f0c968; font-size: 12px; line-height: 1.5; }
 .store-checkout-error { margin: 0 0 12px; color: #ff9a9d; font-size: 12px; line-height: 1.5; }
 .store-cart-drawer-footer > p { margin: 7px 0 10px; color: #929ba4; font-size: 10px; text-align: center; }
 .store-continue-shopping { border: 1px solid #168a51; color: #27c875; background: transparent; }
@@ -2270,12 +2271,11 @@ body:has(.login-form) .signup-page {
   width: 100%;
   height: 220px;
   box-sizing: border-box;
-  padding: 6px;
   overflow: hidden;
-  object-fit: contain;
+  object-fit: cover;
   border: 1px solid #3b444c;
   border-radius: 12px;
-  background: #f4f6f7;
+  background: #0b0e11;
 }
 .store-dialog-hero-info, .store-dialog-product-details { min-width: 0; display: flex; flex-direction: column; gap: 7px; }
 .store-dialog-hero-info { justify-content: center; }
@@ -2426,10 +2426,7 @@ body:has(.login-form) .signup-page {
     width: 100%;
     height: 160px;
     max-height: none;
-    padding: 4px;
-    object-fit: contain;
-    border-radius: 12px;
-    background: #f4f6f7;
+    object-fit: cover;
   }
   .store-dialog-hero-info, .store-dialog-product-details { gap: 6px; }
   .store-dialog-product-details > p:not(.store-dialog-total) {
@@ -2455,19 +2452,24 @@ body:has(.login-form) .signup-page {
   .store-dialog-hero-info .store-dialog-meta-line {
     min-height: 42px;
     padding: 4px 0;
+    width: 100%;
+    box-sizing: border-box;
     grid-template-columns: minmax(0, 1fr);
     align-content: center;
     gap: 2px;
+    border-radius: 0;
   }
   .store-dialog-hero-info .store-dialog-meta-line > span {
     font-size: 10px;
     line-height: 1.2;
   }
   .store-dialog-hero-info .store-dialog-meta-line > strong {
+    min-width: 0;
     font-size: 12px;
     line-height: 1.2;
     text-align: right;
-    white-space: nowrap;
+    white-space: normal;
+    overflow-wrap: anywhere;
   }
   .store-dialog-quantity {
     min-height: 48px;

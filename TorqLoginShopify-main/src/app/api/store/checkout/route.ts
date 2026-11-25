@@ -16,6 +16,7 @@ import {
   type ShopifyOrderDocument,
 } from "@/lib/db";
 import { badOrigin, isSameOrigin, readJson } from "@/lib/http";
+import { MINIMUM_ORDER_TOTAL } from "@/lib/store-order-policy";
 import {
   completeShopifyPortalDraftOrder,
   createShopifyPortalDraftOrder,
@@ -360,6 +361,12 @@ export async function POST(request: Request) {
       return NextResponse.json(
         { error: PRICES_CHANGED_MESSAGE, code: "PRICES_CHANGED" },
         { status: 409 },
+      );
+    }
+    if (totalPrice < MINIMUM_ORDER_TOTAL) {
+      return NextResponse.json(
+        { error: `Minimum order value is Rs ${MINIMUM_ORDER_TOTAL.toLocaleString("en-PK")}. Please add more items to continue.` },
+        { status: 400 },
       );
     }
     let claimed;
