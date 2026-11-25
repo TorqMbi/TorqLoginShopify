@@ -123,10 +123,7 @@ export function AccountDetailsForm({
       </div>
       <div className="field">
         <label htmlFor="alternateMobileNumber">Alternate number <span className="details-optional">(optional)</span></label>
-        <div className={`signup-mobile-box${fieldErrors.alternateMobileNumber ? " has-error" : ""}`}>
-          <span className="signup-mobile-prefix" aria-hidden="true">+92</span>
-          <input id="alternateMobileNumber" name="alternateMobileNumber" type="tel" autoComplete="tel" inputMode="numeric" maxLength={15} placeholder="3XX XXXXXXX" defaultValue={phoneDigits(initialValues.alternateMobileNumber)} aria-invalid={Boolean(fieldErrors.alternateMobileNumber)} aria-describedby={fieldErrors.alternateMobileNumber ? "alternateMobileNumber-error" : undefined} onChange={() => clearFieldError("alternateMobileNumber")} />
-        </div>
+        <input id="alternateMobileNumber" name="alternateMobileNumber" type="tel" autoComplete="tel" inputMode="numeric" maxLength={15} placeholder="0300 1234567" defaultValue={phoneDigits(initialValues.alternateMobileNumber)} aria-invalid={Boolean(fieldErrors.alternateMobileNumber)} aria-describedby={fieldErrors.alternateMobileNumber ? "alternateMobileNumber-error" : undefined} onChange={() => clearFieldError("alternateMobileNumber")} />
         {fieldErrors.alternateMobileNumber && <span className="field-error" id="alternateMobileNumber-error">{fieldErrors.alternateMobileNumber}</span>}
       </div>
       <div className="field">

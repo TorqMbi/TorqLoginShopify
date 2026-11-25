@@ -25,12 +25,19 @@ export function AuthForm({ mode }: Props) {
     const data = Object.fromEntries(formData.entries());
     const nextFieldErrors: Record<string, string> = {};
     if (isLogin) {
-      if (!String(data.mobileNumber ?? "").trim()) nextFieldErrors.mobileNumber = "Enter your mobile number or username.";
+      const mobileDigits = String(data.mobileNumber ?? "")
+        .replace(/\D/g, "")
+        .replace(/^92/, "")
+        .replace(/^0/, "");
+      if (!/^3\d{9}$/.test(mobileDigits)) {
+        nextFieldErrors.mobileNumber = "Enter a valid mobile number.";
+      }
       if (!String(data.password ?? "")) nextFieldErrors.password = "Enter your password.";
       if (Object.keys(nextFieldErrors).length) {
         setFieldErrors(nextFieldErrors);
         return;
       }
+      data.mobileNumber = `+92${mobileDigits}`;
     }
     if (isSignup) {
       const mobileDigits = String(formData.get("mobileNumber") ?? "").replace(/\D/g, "").replace(/^92/, "").replace(/^0/, "");
@@ -127,21 +134,19 @@ export function AuthForm({ mode }: Props) {
         <div className="field">
           <label htmlFor="mobileNumber">Mobile Number</label>
           {isSignup ? (
-            <div className={`signup-mobile-box${fieldErrors.mobileNumber ? " has-error" : ""}`}>
-              <span className="signup-mobile-prefix" aria-hidden="true">+92</span>
-              <input
-                id="mobileNumber"
-                name="mobileNumber"
-                type="tel"
-                autoComplete="tel"
-                inputMode="numeric"
-                required
-                placeholder="3XX XXXXXXX"
-                aria-invalid={Boolean(fieldErrors.mobileNumber)}
-                aria-describedby={fieldErrors.mobileNumber ? "mobileNumber-error" : undefined}
-                onChange={() => setFieldErrors((current) => ({ ...current, mobileNumber: "" }))}
-              />
-            </div>
+            <input
+              id="mobileNumber"
+              name="mobileNumber"
+              type="tel"
+              autoComplete="tel"
+              inputMode="numeric"
+              maxLength={15}
+              required
+              placeholder="0300 1234567"
+              aria-invalid={Boolean(fieldErrors.mobileNumber)}
+              aria-describedby={fieldErrors.mobileNumber ? "mobileNumber-error" : undefined}
+              onChange={() => setFieldErrors((current) => ({ ...current, mobileNumber: "" }))}
+            />
           ) : (
             <>
               <input id="mobileNumber" name="mobileNumber" type="tel" autoComplete="tel" inputMode="tel" required placeholder="+92 300 1234567" />
@@ -160,8 +165,9 @@ export function AuthForm({ mode }: Props) {
             type="tel"
             autoComplete="tel"
             inputMode="numeric"
+            maxLength={15}
             required
-            placeholder="+92 300 1234567"
+            placeholder="0300 1234567"
             aria-invalid={Boolean(fieldErrors.mobileNumber)}
             aria-describedby={fieldErrors.mobileNumber ? "loginIdentifier-error" : undefined}
             onChange={() => setFieldErrors((current) => ({ ...current, mobileNumber: "" }))}
@@ -192,10 +198,7 @@ export function AuthForm({ mode }: Props) {
           </div>
           <div className="field">
             <label htmlFor="alternateMobileNumber">Alternate number <span className="details-optional">(optional)</span></label>
-            <div className={`signup-mobile-box${fieldErrors.alternateMobileNumber ? " has-error" : ""}`}>
-              <span className="signup-mobile-prefix" aria-hidden="true">+92</span>
-              <input id="alternateMobileNumber" name="alternateMobileNumber" type="tel" autoComplete="tel" inputMode="numeric" maxLength={15} placeholder="3XX XXXXXXX" aria-invalid={Boolean(fieldErrors.alternateMobileNumber)} onChange={() => setFieldErrors((current) => ({ ...current, alternateMobileNumber: "" }))} />
-            </div>
+            <input id="alternateMobileNumber" name="alternateMobileNumber" type="tel" autoComplete="tel" inputMode="numeric" maxLength={15} placeholder="0300 1234567" aria-invalid={Boolean(fieldErrors.alternateMobileNumber)} onChange={() => setFieldErrors((current) => ({ ...current, alternateMobileNumber: "" }))} />
             {fieldErrors.alternateMobileNumber && <span className="field-error">{fieldErrors.alternateMobileNumber}</span>}
           </div>
           <div className="field">

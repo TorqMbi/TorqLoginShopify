@@ -37,11 +37,15 @@ export function OtpResetForm() {
     event.preventDefault();
     setError("");
     const formData = new FormData(event.currentTarget);
-    const number = String(formData.get("mobileNumber") ?? "").trim();
+    const mobileDigits = String(formData.get("mobileNumber") ?? "")
+      .replace(/\D/g, "")
+      .replace(/^92/, "")
+      .replace(/^0/, "");
+    const number = `+92${mobileDigits}`;
     const shop = String(formData.get("shopName") ?? "").trim();
     const location = String(formData.get("city") ?? "").trim();
     const nextErrors: Record<string, string> = {};
-    if (!number) nextErrors.mobileNumber = "Enter your mobile number.";
+    if (!/^3\d{9}$/.test(mobileDigits)) nextErrors.mobileNumber = "Enter a valid mobile number.";
     if (!shop) nextErrors.shopName = "Enter your shop name.";
     if (!location) nextErrors.city = "Enter your city.";
     if (Object.keys(nextErrors).length) {
@@ -126,10 +130,11 @@ export function OtpResetForm() {
             name="mobileNumber"
             type="tel"
             autoComplete="tel"
-            inputMode="tel"
+            inputMode="numeric"
+            maxLength={15}
             required
-            defaultValue={mobileNumber}
-            placeholder="+92 300 1234567"
+            defaultValue={mobileNumber.replace(/\D/g, "").replace(/^92/, "")}
+            placeholder="0300 1234567"
             aria-invalid={Boolean(fieldErrors.mobileNumber)}
             aria-describedby={fieldErrors.mobileNumber ? "resetMobileNumber-error" : undefined}
             onChange={() => clearFieldError("mobileNumber")}
