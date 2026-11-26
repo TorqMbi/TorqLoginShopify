@@ -206,7 +206,8 @@ export function Storefront({ products, customer }: Props) {
       window.localStorage.removeItem(CHECKOUT_KEY_STORAGE_KEY);
       window.localStorage.setItem(CART_STORAGE_KEY, "{}");
       setCartOpen(false);
-      router.push("/");
+      router.replace("/store");
+      router.refresh();
     } catch (error) {
       setCheckoutError(
         error instanceof Error
