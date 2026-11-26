@@ -133,7 +133,6 @@ export function OtpResetForm() {
             inputMode="numeric"
             maxLength={15}
             required
-            defaultValue={mobileNumber.replace(/\D/g, "").replace(/^92/, "")}
             placeholder="0300 1234567"
             aria-invalid={Boolean(fieldErrors.mobileNumber)}
             aria-describedby={fieldErrors.mobileNumber ? "resetMobileNumber-error" : undefined}
@@ -165,7 +164,6 @@ export function OtpResetForm() {
             type="text"
             autoComplete="address-level2"
             required
-            defaultValue={city}
             placeholder="Lahore"
             aria-invalid={Boolean(fieldErrors.city)}
             aria-describedby={fieldErrors.city ? "resetCity-error" : undefined}

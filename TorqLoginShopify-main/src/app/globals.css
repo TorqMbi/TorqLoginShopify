@@ -1277,6 +1277,16 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   text-decoration: none;
 }
 .auth-back-link:hover { text-decoration: underline; }
+.signup-signin-link {
+  position: absolute;
+  top: -48px;
+  right: 0;
+  margin: 0;
+  font-size: 14px;
+  font-weight: 700;
+}
+.signup-signin-link a { color: #22c55e; text-decoration: none; }
+.signup-signin-link a:hover { text-decoration: underline; }
 .signup-card {
   width: 100%;
   max-width: 560px;
@@ -1519,6 +1529,9 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
     width: 100%;
   }
   .auth-back-link {
+    top: -40px;
+  }
+  .signup-signin-link {
     top: -40px;
   }
   .signup-card {

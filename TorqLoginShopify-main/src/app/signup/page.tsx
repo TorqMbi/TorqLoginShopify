@@ -10,14 +10,14 @@ export default function SignupPage() {
       <main className="signup-page">
         <div className="auth-card-container">
           <AuthBackLink />
+          <p className="signup-signin-link">
+            Already have an account? <Link href="/login">Sign in</Link>
+          </p>
           <section className="signup-card">
             <header className="signup-card-header">
               <h1>Signup</h1>
             </header>
             <AuthForm mode="signup" />
-            <p className="signup-login-prompt">
-              Already have an account? <Link href="/login">Sign in</Link>
-            </p>
           </section>
         </div>
       </main>
