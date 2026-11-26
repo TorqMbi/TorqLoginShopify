@@ -15,35 +15,11 @@ type Props = {
 
 const CART_STORAGE_KEY = "torq-cart-v1";
 const CHECKOUT_KEY_STORAGE_KEY = "torq-checkout-key-v1";
-const WHATSAPP_SUPPORT_NUMBER = "923214073811";
 const STORE_BANNER_IMAGES = [
   { src: "/image1.jpg", alt: "TORQ steel ball bearing" },
   { src: "/image2.jpg", alt: "TORQ branded bearing" },
   { src: "/image3.jpg", alt: "TORQ sealed bearing" },
 ] as const;
-
-type OrderConfirmation = {
-  orderName: string;
-  totalCartons: number;
-  totalPrice: number;
-  currencyCode: string;
-  customer: {
-    contactPersonName: string;
-    shopName: string;
-    contactMobileNumber: string;
-    alternateMobileNumber?: string;
-    shopAddress: string;
-    detailedAddress: string;
-    city: string;
-    province: string;
-  };
-  items: Array<{
-    title: string;
-    sku: string;
-    quantity: number;
-    unitPrice: number;
-  }>;
-};
 
 function formatPrice(amount: number): string {
   return new Intl.NumberFormat("en-PK", {
@@ -53,35 +29,6 @@ function formatPrice(amount: number): string {
 
 function productPrice(amount: number | null): string {
   return amount === null ? "Price unavailable" : `Rs ${formatPrice(amount)}`;
-}
-
-function getPaymentRequestMessage(order: OrderConfirmation): string {
-  const itemLines = order.items.map(({ title, sku, quantity, unitPrice }) => {
-    const itemName = sku ? `${title} (${sku})` : title;
-    const lineTotal = unitPrice * quantity;
-    return `- ${itemName}: ${quantity} carton(s) x ${order.currencyCode} ${formatPrice(unitPrice)} = ${order.currencyCode} ${formatPrice(lineTotal)}`;
-  });
-  const { customer } = order;
-  const message = [
-    "Assalam-o-Alaikum, please confirm my order and share the official payment details.",
-    "",
-    "PRO FORMA ORDER SUMMARY",
-    `Order: ${order.orderName}`,
-    `Name: ${customer.contactPersonName}`,
-    `Shop: ${customer.shopName}`,
-    `Mobile / WhatsApp: ${customer.contactMobileNumber}`,
-    ...(customer.alternateMobileNumber ? [`Alternate mobile: ${customer.alternateMobileNumber}`] : []),
-    `Delivery address: ${customer.shopAddress}, ${customer.detailedAddress}, ${customer.city}, ${customer.province}`,
-    ...(itemLines.length > 0 ? itemLines : ["Order items: please refer to the order number above."]),
-    `Total cartons: ${order.totalCartons}`,
-    `Order total: ${order.currencyCode} ${formatPrice(order.totalPrice)}`,
-    "Payment status: Pending (not paid).",
-  ].join("\n");
-  return message;
-}
-
-function getPaymentDetailsWhatsAppUrl(order: OrderConfirmation): string {
-  return `https://wa.me/${WHATSAPP_SUPPORT_NUMBER}?text=${encodeURIComponent(getPaymentRequestMessage(order))}`;
 }
 
 function WhatsAppIcon() {
@@ -102,7 +49,7 @@ export function Storefront({ products, customer }: Props) {
   const [checkoutKey, setCheckoutKey] = useState<string | null>(null);
   const [checkoutError, setCheckoutError] = useState("");
   const [checkoutSubmitting, setCheckoutSubmitting] = useState(false);
-  const [orderConfirmation, setOrderConfirmation] = useState<OrderConfirmation | null>(null);
+  const [cartStep, setCartStep] = useState<"cart" | "summary" | "payment">("cart");
   const [selectedProduct, setSelectedProduct] = useState<ShopifyStoreProduct | null>(null);
   const [bannerIndex, setBannerIndex] = useState(0);
   const searchInput = useRef<HTMLInputElement>(null);
@@ -148,14 +95,13 @@ export function Storefront({ products, customer }: Props) {
   }, []);
 
   useEffect(() => {
-    if (!cartOpen && !selectedProduct && !orderConfirmation) return;
+    if (!cartOpen && !selectedProduct) return;
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     function closeOnEscape(event: KeyboardEvent) {
       if (event.key === "Escape") {
         setCartOpen(false);
         setSelectedProduct(null);
-        setOrderConfirmation(null);
       }
     }
     window.addEventListener("keydown", closeOnEscape);
@@ -163,7 +109,11 @@ export function Storefront({ products, customer }: Props) {
       document.body.style.overflow = previousOverflow;
       window.removeEventListener("keydown", closeOnEscape);
     };
-  }, [cartOpen, orderConfirmation, selectedProduct]);
+  }, [cartOpen, selectedProduct]);
+
+  useEffect(() => {
+    if (!cartOpen) setCartStep("cart");
+  }, [cartOpen]);
 
   useEffect(() => {
     setCheckoutKey(window.localStorage.getItem(CHECKOUT_KEY_STORAGE_KEY));
@@ -241,7 +191,7 @@ export function Storefront({ products, customer }: Props) {
       const result = await response.json() as {
         error?: string;
         code?: string;
-        order?: OrderConfirmation;
+        order?: unknown;
       };
       if (result.code === "PRICES_CHANGED") {
         // Reload current prices; the cart keeps its items for the customer to re-check.
@@ -256,7 +206,7 @@ export function Storefront({ products, customer }: Props) {
       window.localStorage.removeItem(CHECKOUT_KEY_STORAGE_KEY);
       window.localStorage.setItem(CART_STORAGE_KEY, "{}");
       setCartOpen(false);
-      setOrderConfirmation(result.order);
+      router.push("/");
     } catch (error) {
       setCheckoutError(
         error instanceof Error
@@ -479,79 +429,99 @@ export function Storefront({ products, customer }: Props) {
               </div>
             )}
             <footer className="store-cart-drawer-footer">
-              <div className="store-cart-drawer-total">
-                <span>{totalCartons} {totalCartons === 1 ? "carton" : "cartons"}</span>
-                <strong>Rs {formatPrice(totalAmount)}</strong>
-              </div>
-              {totalAmount < MINIMUM_ORDER_TOTAL && (
-                <p className="store-minimum-order-notice" role="status">
-                  Minimum order: Rs {formatPrice(MINIMUM_ORDER_TOTAL)}. Add Rs {formatPrice(MINIMUM_ORDER_TOTAL - totalAmount)} more to continue.
-                </p>
+              {cartStep === "cart" && (
+                <>
+                  <div className="store-cart-drawer-total">
+                    <span>{totalCartons} {totalCartons === 1 ? "carton" : "cartons"}</span>
+                    <strong>Rs {formatPrice(totalAmount)}</strong>
+                  </div>
+                  {totalAmount < MINIMUM_ORDER_TOTAL && (
+                    <p className="store-minimum-order-notice" role="status">
+                      Minimum order: Rs {formatPrice(MINIMUM_ORDER_TOTAL)}. Add Rs {formatPrice(MINIMUM_ORDER_TOTAL - totalAmount)} more to continue.
+                    </p>
+                  )}
+                  {checkoutError && <p className="store-checkout-error" role="alert">{checkoutError}</p>}
+                  <button
+                    className="store-confirm-order"
+                    type="button"
+                    disabled={cartItems.length === 0 || totalAmount < MINIMUM_ORDER_TOTAL}
+                    onClick={() => setCartStep("summary")}
+                  >
+                    Confirm Order
+                  </button>
+                  <p>Payment is due later. We’ll confirm your order through TORQ Bearings.</p>
+                  <button className="store-continue-shopping" type="button" onClick={() => setCartOpen(false)}>
+                    Continue shopping
+                  </button>
+                </>
               )}
-              {checkoutError && <p className="store-checkout-error" role="alert">{checkoutError}</p>}
-              <button
-                className="store-confirm-order"
-                type="button"
-                disabled={checkoutSubmitting || cartItems.length === 0 || totalAmount < MINIMUM_ORDER_TOTAL}
-                onClick={confirmOrder}
-              >
-                {checkoutSubmitting ? "Confirming order…" : "Confirm Order"}
-              </button>
-              <p>Payment is due later. We’ll confirm your order through TORQ Bearings.</p>
-              <button className="store-continue-shopping" type="button" onClick={() => setCartOpen(false)}>
-                Continue shopping
-              </button>
+
+              {cartStep === "summary" && (
+                <>
+                  <h3 className="store-checkout-summary-title">Order Summary</h3>
+                  <section className="store-checkout-summary" aria-label="Checkout summary">
+                    <div><span>Total cartons</span><strong>{totalCartons}</strong></div>
+                    <div><span>Total amount</span><strong>Rs {formatPrice(totalAmount)}</strong></div>
+                  </section>
+                  <button
+                    className="store-confirm-order"
+                    type="button"
+                    onClick={() => setCartStep("payment")}
+                  >
+                    Checkout
+                  </button>
+                  <button className="store-continue-shopping" type="button" onClick={() => setCartStep("cart")}>
+                    Back to cart
+                  </button>
+                </>
+              )}
+
+              {cartStep === "payment" && (
+                <section className="store-card-form" aria-label="Card payment form">
+                  <p className="store-payment-notice" role="status">
+                    Payment gateway not connected
+                  </p>
+                  <fieldset disabled>
+                    <div className="store-card-field">
+                      <label htmlFor="card-name">Name on card</label>
+                      <input id="card-name" name="cardName" autoComplete="cc-name" placeholder="Enter name" />
+                    </div>
+                    <div className="store-card-field">
+                      <label htmlFor="card-number">Card number</label>
+                      <input id="card-number" name="cardNumber" inputMode="numeric" autoComplete="cc-number" placeholder="0000 0000 0000 0000" />
+                    </div>
+                    <div className="store-card-field-row">
+                      <div className="store-card-field">
+                        <label htmlFor="card-expiry">Expiry date</label>
+                        <input id="card-expiry" name="cardExpiry" inputMode="numeric" autoComplete="cc-exp" placeholder="MM / YY" />
+                      </div>
+                      <div className="store-card-field">
+                        <label htmlFor="card-cvc">CVC</label>
+                        <input id="card-cvc" name="cardCvc" inputMode="numeric" autoComplete="cc-csc" placeholder="CVC" />
+                      </div>
+                    </div>
+                  </fieldset>
+                  {checkoutError && <p className="store-checkout-error" role="alert">{checkoutError}</p>}
+                  <button
+                    className="store-confirm-order"
+                    type="button"
+                    disabled={checkoutSubmitting}
+                    onClick={confirmOrder}
+                  >
+                    {checkoutSubmitting ? "Creating order…" : "Continue to shopping"}
+                  </button>
+                  <button
+                    className="store-continue-shopping"
+                    type="button"
+                    disabled={checkoutSubmitting}
+                    onClick={() => setCartStep("summary")}
+                  >
+                    Back
+                  </button>
+                </section>
+              )}
             </footer>
           </aside>
-        </div>
-      )}
-
-      {orderConfirmation && (
-        <div
-          className="store-dialog-backdrop"
-          onMouseDown={(event) => {
-            if (event.target === event.currentTarget) setOrderConfirmation(null);
-          }}
-        >
-          <section
-            className="store-dialog store-order-confirmation"
-            role="dialog"
-            aria-modal="true"
-            aria-labelledby="store-order-confirmation-title"
-          >
-            <button
-              className="store-dialog-close"
-              type="button"
-              onClick={() => setOrderConfirmation(null)}
-              aria-label="Close order confirmation"
-            >
-              ×
-            </button>
-            <h2 id="store-order-confirmation-title">Complete Your Order</h2>
-            <p className="store-order-subtitle">Review your order and send it on WhatsApp to get payment details.</p>
-            <p className="store-order-number">Order {orderConfirmation.orderName}</p>
-            <section className="store-order-review" aria-label="Order summary">
-              <h3>1. Order Summary</h3>
-              <dl className="store-order-summary">
-                <div><dt>Total Products</dt><dd>{orderConfirmation.items.length}</dd></div>
-                <div><dt>Total Cartons</dt><dd>{orderConfirmation.totalCartons}</dd></div>
-                <div className="store-order-summary-total">
-                  <dt>Total Payment</dt>
-                  <dd>Rs {formatPrice(orderConfirmation.totalPrice)}</dd>
-                </div>
-              </dl>
-            </section>
-            <a
-              className="store-order-whatsapp-button"
-              href={getPaymentDetailsWhatsAppUrl(orderConfirmation)}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <WhatsAppIcon />
-              Send Order to Our WhatsApp
-            </a>
-            <p className="store-order-whatsapp-hint">Send your order on WhatsApp to receive payment details. We’ll process your order after your payment is confirmed.</p>
-          </section>
         </div>
       )}
 

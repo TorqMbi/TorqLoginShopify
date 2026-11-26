@@ -2264,6 +2264,73 @@ body:has(.login-form) .signup-page {
 .store-cart-drawer-total { margin-bottom: 16px; display: flex; align-items: center; justify-content: space-between; }
 .store-cart-drawer-total span { font-size: 13px; }
 .store-cart-drawer-total strong { font-size: 19px; }
+.store-checkout-summary-title {
+  margin: 0 0 10px;
+  color: #f2f4f5;
+  font-size: 16px;
+  text-align: left;
+}
+.store-checkout-summary {
+  margin: 0 0 14px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid #353c43;
+  border-radius: 8px;
+  background: #171b20;
+  padding: 13px;
+}
+.store-checkout-summary div {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+.store-checkout-summary span { color: #aab3bb; font-size: 13px; }
+.store-checkout-summary strong { font-size: 16px; }
+.store-card-form fieldset {
+  margin: 0 0 12px;
+  padding: 0;
+  display: grid;
+  gap: 10px;
+  border: 0;
+}
+.store-card-field {
+  display: grid;
+  gap: 5px;
+}
+.store-card-field label {
+  color: #cfd5da;
+  font-size: 11px;
+  font-weight: 700;
+}
+.store-card-field input {
+  width: 100%;
+  min-height: 42px;
+  border: 1px solid #3b434b;
+  border-radius: 7px;
+  color: #e8ebed;
+  background: #101317;
+  padding: 0 11px;
+}
+.store-card-field input:disabled {
+  opacity: .65;
+  cursor: not-allowed;
+}
+.store-card-field-row {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+}
+.store-payment-notice {
+  margin: 0 0 12px !important;
+  border: 1px solid #4b3e20;
+  border-radius: 7px;
+  color: #f0c968 !important;
+  background: #2a2518;
+  padding: 9px 10px;
+  text-align: center !important;
+  font-size: 12px !important;
+}
 .store-confirm-order,
 .store-continue-shopping {
   width: 100%;
@@ -2274,6 +2341,7 @@ body:has(.login-form) .signup-page {
 }
 .store-confirm-order { border: 0; color: white; background: #168a51; }
 .store-confirm-order:disabled { opacity: .55; cursor: not-allowed; }
+.store-confirm-order + .store-continue-shopping { margin-top: 8px; }
 .store-minimum-order-notice { margin: 0 0 12px; color: #f0c968; font-size: 12px; line-height: 1.5; }
 .store-checkout-error { margin: 0 0 12px; color: #ff9a9d; font-size: 12px; line-height: 1.5; }
 .store-cart-drawer-footer > p { margin: 7px 0 10px; color: #929ba4; font-size: 10px; text-align: center; }
