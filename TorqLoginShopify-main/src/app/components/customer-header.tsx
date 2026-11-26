@@ -18,11 +18,10 @@ function initialsOf(name: string) {
 
 type Props = {
   customer: CustomerHeaderCustomer;
-  cartCount?: number;
-  onCartClick?: () => void;
   hideHome?: boolean;
   hideContact?: boolean;
   hideEditDetails?: boolean;
+  hideProfile?: boolean;
 };
 
 type MenuItem = {
@@ -221,11 +220,10 @@ function ProfileMenu({ customer }: { customer: CustomerHeaderCustomer }) {
 
 export function CustomerHeader({
   customer,
-  cartCount = 0,
-  onCartClick,
   hideHome = false,
   hideContact = false,
   hideEditDetails = false,
+  hideProfile = false,
 }: Props) {
   const pathname = usePathname() ?? "";
   const hasAccountDetails = customer.status === "no-details" ||
@@ -268,38 +266,9 @@ export function CustomerHeader({
           </nav>
         )}
         <div className="customer-site-actions">
-          <ProfileMenu customer={customer} />
-          {customer.status === "approved" && (
-            onCartClick ? (
-              <button
-                className="customer-header-cart"
-                type="button"
-                aria-label={`View cart, ${cartCount} cartons`}
-                onClick={onCartClick}
-              >
-                <CartIcon count={cartCount} />
-              </button>
-            ) : (
-              <Link className="customer-header-cart" href="/store" aria-label={`View cart, ${cartCount} cartons`}>
-                <CartIcon count={cartCount} />
-              </Link>
-            )
-          )}
+          {!hideProfile && <ProfileMenu customer={customer} />}
         </div>
       </div>
     </header>
-  );
-}
-
-function CartIcon({ count }: { count: number }) {
-  return (
-    <>
-      <svg viewBox="0 0 24 24" aria-hidden="true">
-        <path d="M3.5 4.5h2l2.2 11.2h10.8l2-8H6.3" />
-        <circle cx="9.5" cy="19.5" r="1.2" />
-        <circle cx="17.5" cy="19.5" r="1.2" />
-      </svg>
-      <span className="customer-cart-count">{count}</span>
-    </>
   );
 }

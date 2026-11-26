@@ -261,8 +261,6 @@ export function Storefront({ products, customer }: Props) {
     <main className="storefront">
       <CustomerHeader
         customer={customer}
-        cartCount={totalCartons}
-        onCartClick={() => setCartOpen(true)}
       />
       <section className="store-banner" aria-label="Featured products">
         {STORE_BANNER_IMAGES.map((image, index) => (

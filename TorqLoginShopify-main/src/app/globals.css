@@ -606,10 +606,9 @@ body {
 .customer-site-actions { margin-left: auto; display: flex; align-items: center; gap: 10px; }
 .customer-site-brand:focus-visible,
 .customer-site-nav a:focus-visible,
-.customer-profile-trigger:focus-visible,
-.customer-header-cart:focus-visible { outline: 2px solid #22c55e; outline-offset: 2px; }
+.customer-profile-trigger:focus-visible { outline: 2px solid #22c55e; outline-offset: 2px; }
 .customer-profile { position: relative; }
-.customer-profile-trigger, .customer-header-cart {
+.customer-profile-trigger {
   position: relative;
   width: 40px;
   height: 40px;
@@ -624,7 +623,7 @@ body {
   text-decoration: none;
   transition: color .15s ease, background-color .15s ease, border-color .15s ease;
 }
-.customer-profile-trigger:hover, .customer-header-cart:hover,
+.customer-profile-trigger:hover,
 .customer-profile-trigger[aria-expanded="true"] {
   color: #4ade80;
   background: rgba(34, 197, 94, .1);
@@ -652,7 +651,7 @@ body {
   border-radius: 50%;
   background: #f5b942;
 }
-.customer-profile-trigger svg, .customer-header-cart > svg {
+.customer-profile-trigger svg {
   width: 20px;
   height: 20px;
   fill: none;
@@ -890,14 +889,16 @@ html:has(.landing-home-shell), body:has(.landing-home-shell) {
 }
 .landing-actions {
   margin: 10px 0 5px;
-  width: min(100%, 300px);
+  width: min(100%, 360px);
   margin-inline: auto;
   display: flex;
+  gap: 10px;
   justify-content: center;
   align-items: center;
 }
 .landing-action-link {
-  width: 100%;
+  flex: 1;
+  min-width: 0;
   min-height: 36px;
   padding: 0 10px;
   display: inline-flex;
@@ -1092,7 +1093,7 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
     background: #22c55e;
   }
   .customer-site-nav a:focus-visible { outline-offset: -3px; }
-  .customer-profile-trigger, .customer-header-cart { width: 38px; height: 38px; }
+  .customer-profile-trigger { width: 38px; height: 38px; }
   .admin-header-actions { flex-wrap: wrap; justify-content: flex-end; }
   .admin-header-actions a { font-size: 11px; }
   .admin-pagination { align-items: flex-start; flex-direction: column; }
@@ -1150,7 +1151,6 @@ td { color: #d0d4d7; border-bottom-color: #2b3036; }
   .landing-content { width: calc(100% - 24px); gap: 25px; }
   .landing-account-card { padding: 16px 13px; }
   .landing-account-card h1 { font-size: 19px; }
-  .landing-actions { flex-direction: column; gap: 9px; }
   .landing-action-link { min-height: 40px; }
   .landing-intro h2 { font-size: 15px; }
   .landing-reasons > h2, .landing-process > h2 { font-size: 14px; }

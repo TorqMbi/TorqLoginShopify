@@ -17,30 +17,33 @@ const orderingSteps = [
 
 export default async function HomePage() {
   const customer = await getCustomerHeaderCustomer();
-  const homeAction = customer.status === "guest"
-    ? { label: "Sign up / Sign in", href: "/signup" }
-    : customer.status === "no-details"
-      ? { label: "Complete shop details", href: "/account/details" }
-      : customer.status === "pending"
-        ? { label: "View account status", href: "/dashboard" }
-        : customer.status === "approved"
-          ? { label: "Browse products", href: "/store" }
-          : null;
+  const homeAction = customer.status === "no-details"
+    ? { label: "Complete shop details", href: "/account/details" }
+    : customer.status === "pending"
+      ? { label: "View account status", href: "/dashboard" }
+      : customer.status === "approved"
+        ? { label: "Browse products", href: "/store" }
+        : null;
 
   return (
     <div className="landing-home-shell">
-      <StoreHeader customer={customer} hideHome hideContact hideEditDetails />
+      <StoreHeader customer={customer} hideHome hideContact hideEditDetails hideProfile />
       <main className="landing-page landing-home-page">
         <BearingCarousel />
 
         <div className="landing-content">
           <section className="landing-account-card" aria-labelledby="landing-title">
             <h1 id="landing-title">Sign up, Sign in, and Stay connected.</h1>
-            {homeAction && (
+            {customer.status === "guest" ? (
+              <div className="landing-actions">
+                <Link className="landing-action-link" href="/signup">Sign up</Link>
+                <Link className="landing-action-link" href="/login">Sign in</Link>
+              </div>
+            ) : homeAction ? (
               <div className="landing-actions">
                 <Link className="landing-action-link" href={homeAction.href}>{homeAction.label}</Link>
               </div>
-            )}
+            ) : null}
           </section>
 
           <section className="landing-process" id="how-it-works" aria-labelledby="landing-process-title">

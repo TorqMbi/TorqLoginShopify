@@ -11,7 +11,7 @@ export default async function LoginPage({
   const params = await searchParams;
   return (
     <>
-      <StoreHeader />
+      <StoreHeader hideProfile />
       <main className="signup-page">
         <div className="auth-card-container">
           <AuthBackLink />

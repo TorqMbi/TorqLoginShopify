@@ -11,14 +11,16 @@ export async function StoreHeader({
   hideHome = false,
   hideContact = false,
   hideEditDetails = false,
+  hideProfile = false,
 }: {
   customer?: CustomerHeaderCustomer;
   hideHome?: boolean;
   hideContact?: boolean;
   hideEditDetails?: boolean;
+  hideProfile?: boolean;
 } = {}) {
   const headerCustomer = customer ?? await getCustomerHeaderCustomer();
-  return <CustomerHeader customer={headerCustomer} hideHome={hideHome} hideContact={hideContact} hideEditDetails={hideEditDetails} />;
+  return <CustomerHeader customer={headerCustomer} hideHome={hideHome} hideContact={hideContact} hideEditDetails={hideEditDetails} hideProfile={hideProfile} />;
 }
 
 const footerLinks = [

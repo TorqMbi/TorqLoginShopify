@@ -6,7 +6,7 @@ import { StoreHeader } from "@/app/components/store-chrome";
 export default function SignupPage() {
   return (
     <>
-      <StoreHeader />
+      <StoreHeader hideProfile />
       <main className="signup-page">
         <div className="auth-card-container">
           <AuthBackLink />
